@@ -110,6 +110,10 @@ h2{font:800 1.5rem/1.2 var(--font-display);letter-spacing:-.01em;margin:0;text-w
 .del{width:36px;height:36px;border:0;background:none;color:var(--muted);border-radius:8px;font-size:1.25rem;line-height:1;cursor:pointer;align-self:start;justify-self:end}
 .del:hover{color:var(--accent);background:var(--field)}
 .ro .add,.ro .del,.ro .act{display:none}
+.share{margin-left:auto;font-weight:600;font-size:.85rem;color:var(--pine);background:var(--field);border:0;border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.share:hover{filter:brightness(.95)}
+.only .tabs,.only .share{display:none}
+.only main{padding-top:16px}
 .inline{display:flex;align-items:center;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted);min-width:0}
 .inline .f{font-size:1rem;font-weight:400;color:var(--ink);width:auto;flex:1 1 130px}
 .meta{display:flex;flex-wrap:wrap;gap:4px 16px;padding-left:8px}
@@ -297,7 +301,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     </section>
 
     <section id="sec-food">
-      <div class="sec-head"><h2>Food</h2><span class="sum" id="sum-food"></span></div>
+      <div class="sec-head"><h2>Food</h2><span class="sum" id="sum-food"></span><button class="share act" type="button" data-share="food">Copy link to share</button></div>
       <div class="colhead" aria-hidden="true"><span>Dish or drink</span><span>Who's bringing</span><span>Type</span><span>Notes</span><span></span></div>
       <div class="rows" id="list-food"></div>
       <p class="empty" id="empty-food" hidden>Nothing on the list yet. Add what you're bringing so nobody doubles up.</p>
@@ -305,7 +309,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     </section>
 
     <section id="sec-worship">
-      <div class="sec-head"><h2>Worship set</h2><span class="sum" id="sum-songs"></span></div>
+      <div class="sec-head"><h2>Worship set</h2><span class="sum" id="sum-songs"></span><button class="share act" type="button" data-share="worship">Copy link to share</button></div>
       <p class="hint">Songs play in this order. Paste the lyrics with a blank line between verses: each verse becomes its own slide in party mode.</p>
       <div class="rows" id="list-songs"></div>
       <p class="empty" id="empty-songs" hidden>No songs yet. Add the first one in the set.</p>
@@ -464,6 +468,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
+const ONLY = (() => { try { const v = (new URLSearchParams(location.search).get('only') || '').toLowerCase(); return ['food', 'worship'].includes(v) ? v : ''; } catch (e) { return ''; } })();
+if (ONLY) document.body.classList.add('only');
 const COLLS = ['schedule', 'games', 'food', 'songs', 'people', 'todo'];
 const DEFAULTS = { schedule: { deck: 'plain' }, games: { show: true }, food: { cat: 'main' }, songs: { show: true }, people: {}, todo: {} };
 const LABEL_FIELD = { schedule: 'title', games: 'name', songs: 'title', food: 'item', people: 'name', todo: 'text' };
@@ -588,7 +594,7 @@ const autoSize = !(window.CSS && CSS.supports && CSS.supports('field-sizing', 'c
 function grow(t) { if (!autoSize) return; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
 
 function setField(el, v) {
-  const locked = readOnly || !ready;
+  const locked = readOnly || !ready || (!!ONLY && (el.dataset.path || '').startsWith('plan/'));
   if (el.disabled !== locked) el.disabled = locked;
   if (dirty.has(el.dataset.key)) return;
   if (el.type === 'checkbox') { if (el.checked !== !!v) el.checked = !!v; return; }
@@ -701,7 +707,8 @@ function render() {
     const t = parseDate(todayISO()), days = Math.round((d - t) / 864e5);
     cd.textContent = (days > 1 ? days + ' days to go' : days === 1 ? 'Tomorrow' : days === 0 ? 'Today' : 'Done and dusted') + ' · ' + longDate(S.main.date);
   }
-  document.title = txt(S.main.title) ? txt(S.main.title) + ' Plan' : 'Christmas Party Plan';
+  const party = txt(S.main.title) || 'Christmas Party';
+  document.title = ONLY ? (ONLY === 'food' ? 'Food list' : 'Worship set') + ' · ' + party : party + ' Plan';
 
   if (autoSize) $$('textarea.f').forEach(grow);
   if (focusPath) {
@@ -711,6 +718,15 @@ function render() {
   }
   if (deckOpen) renderDeck();
 }
+
+/* ---------- share links ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-share]'); if (!b) return;
+  const url = location.origin + location.pathname + '?only=' + b.dataset.share;
+  const what = b.dataset.share === 'food' ? 'the food list' : 'the worship set';
+  const done = () => toast('Link copied. It opens ' + what + ' only.');
+  try { navigator.clipboard.writeText(url).then(done, () => toast(url)); } catch (err) { toast(url); }
+});
 
 /* ---------- add, delete, draw ---------- */
 document.addEventListener('click', async e => {
@@ -903,8 +919,9 @@ function showTab(name) {
   curTab = TABS.includes(name) ? name : 'schedule';
   TABS.forEach(t => { $('#sec-' + t).classList.toggle('on', t === curTab); const b = $('[data-go="' + t + '"]'); b.setAttribute('aria-selected', t === curTab); b.tabIndex = t === curTab ? 0 : -1; });
 }
-function goTab(name) { showTab(name); try { if (location.hash !== '#' + curTab) location.hash = curTab; } catch (e) {} scrollTo({ top: 0, behavior: 'auto' }); }
+function goTab(name) { if (ONLY) return; showTab(name); try { if (location.hash !== '#' + curTab) location.hash = curTab; } catch (e) {} scrollTo({ top: 0, behavior: 'auto' }); }
 function route(name) {
+  if (ONLY) { closeDeck(); showTab(ONLY); return; }
   const hsh = name != null ? '#' + name : location.hash;
   if (hsh === '#party') { openDeck(); return; }
   closeDeck();
