@@ -141,6 +141,9 @@ h2{font:800 1.5rem/1.2 var(--font-display);letter-spacing:-.01em;margin:0;text-w
 .game{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:2px 10px;padding:12px 0}
 .game-body{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mins{max-width:76px;flex:0 0 76px!important}
+.game .check{padding-left:8px}
+.game.off .game-body>:not(.meta),.game.off .meta>.inline{opacity:.45}
+.game.off .check{color:var(--accent)}
 
 /* food */
 .food,.colhead{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 128px minmax(0,1.3fr) 36px;gap:2px 8px;align-items:start}
@@ -377,6 +380,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <div class="meta">
         <label class="inline">Minutes <input class="f mins" type="number" inputmode="numeric" min="0" max="180" data-f="mins" data-num></label>
         <label class="inline">Led by <input class="f" data-f="lead" placeholder="Name"></label>
+        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in party mode</span></label>
       </div>
     </div>
     <button class="del" type="button" data-del aria-label="Delete this game">×</button>
@@ -430,7 +434,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
 const COLLS = ['schedule', 'games', 'food', 'people', 'todo'];
-const DEFAULTS = { schedule: { deck: 'plain' }, games: {}, food: { cat: 'main' }, people: {}, todo: {} };
+const DEFAULTS = { schedule: { deck: 'plain' }, games: { show: true }, food: { cat: 'main' }, people: {}, todo: {} };
 const LABEL_FIELD = { schedule: 'title', games: 'name', food: 'item', people: 'name', todo: 'text' };
 const CATS = [['main', 'Main', 'mains'], ['side', 'Side', 'sides'], ['dessert', 'Dessert', 'desserts'], ['drinks', 'Drinks', 'drinks'], ['other', 'Other', 'other']];
 
@@ -615,14 +619,15 @@ function render() {
 
   // games
   const games = byOrder(S.games);
-  syncList('games', games);
+  syncList('games', games, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in party mode' : 'Not in party mode'; });
+  const inDeck = games.filter(g => g.show !== false);
   const gameSlot = sched.find(s => s.deck === 'games'), slotLen = gameSlot ? dur(gameSlot) : null;
-  const total = games.reduce((n, g) => n + (Number(g.mins) || 0), 0);
+  const total = inDeck.reduce((n, g) => n + (Number(g.mins) || 0), 0);
   const gs = $('#sum-games');
   if (!games.length) { gs.textContent = slotLen ? slotLen + ' min slot to fill' : ''; gs.classList.remove('over'); }
   else {
     const over = slotLen != null && total > slotLen;
-    gs.textContent = games.length + (games.length === 1 ? ' game' : ' games') + ' · ' + total + ' min planned' + (slotLen != null ? ' of the ' + slotLen + ' min slot' : '') + (over ? ' (over by ' + (total - slotLen) + ')' : '');
+    gs.textContent = games.length + (games.length === 1 ? ' game' : ' games') + (inDeck.length < games.length ? ' · ' + inDeck.length + ' in party mode' : '') + ' · ' + total + ' min planned' + (slotLen != null ? ' of the ' + slotLen + ' min slot' : '') + (over ? ' (over by ' + (total - slotLen) + ')' : '');
     gs.classList.toggle('over', over);
   }
 
@@ -720,7 +725,7 @@ const slotsInDeck = () => sortedSchedule().filter(s => (s.deck || 'plain') !== '
 function buildSlides() {
   const slots = slotsInDeck(), list = [{ key: 'cover', type: 'cover' }];
   if (slots.length) list.push({ key: 'overview', type: 'overview', label: "Tonight's plan" });
-  const games = byOrder(S.games).filter(g => txt(g.name));
+  const games = byOrder(S.games).filter(g => txt(g.name) && g.show !== false);
   const people = byOrder(S.people);
   const order = (Array.isArray(S.gifts.order) ? S.gifts.order : []).map(id => people.find(p => p.id === id)).filter(p => p && txt(p.name));
   for (const s of slots) {
@@ -777,7 +782,7 @@ function drawSlide() {
       }));
       if (items.length) inner.appendChild(ul);
     } else if (s.deck === 'games') {
-      const games = byOrder(S.games).filter(g => txt(g.name));
+      const games = byOrder(S.games).filter(g => txt(g.name) && g.show !== false);
       const ul = h('ul', 'd-list cols');
       games.forEach((g, i) => { const li = h('li'); li.appendChild(h('span', 't short', String(i + 1))); li.appendChild(h('span', '', txt(g.name))); ul.appendChild(li); });
       if (games.length) inner.appendChild(ul);
