@@ -9,6 +9,7 @@
 @font-face{font-family:"Figtree";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-400-normal.woff2) format("woff2")}
 @font-face{font-family:"Figtree";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-600-normal.woff2) format("woff2")}
 @font-face{font-family:"Figtree";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Caveat Brush";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/caveat-brush-latin-400-normal.woff2) format("woff2")}
 @font-face{font-family:"Bricolage Grotesque";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/bricolage-grotesque-latin-600-normal.woff2) format("woff2")}
 @font-face{font-family:"Bricolage Grotesque";font-weight:800;font-style:normal;font-display:swap;src:url(fonts/bricolage-grotesque-latin-800-normal.woff2) format("woff2")}
 :root{
@@ -83,6 +84,8 @@ textarea.title{font:800 clamp(1.9rem,6vw,3.1rem)/1.08 var(--font-display);letter
 .tabs nav::-webkit-scrollbar{display:none}
 .tab{font-weight:600;font-size:.92rem;padding:8px 10px;border-radius:8px;border:0;background:none;color:var(--muted);white-space:nowrap;cursor:pointer}
 .tab:hover{color:var(--ink);background:var(--field)}
+.tab[aria-selected="true"]{color:var(--surface);background:var(--pine)}
+.tab[aria-selected="true"]:hover{color:var(--surface);background:var(--pine)}
 .btn-party{flex:none;background:var(--accent);color:var(--on-accent);border:0;border-radius:999px;padding:9px 16px;font-weight:700;font-size:.92rem;white-space:nowrap;cursor:pointer}
 .btn-party:hover{filter:brightness(1.08)}
 
@@ -90,8 +93,8 @@ textarea.title{font:800 clamp(1.9rem,6vw,3.1rem)/1.08 var(--font-display);letter
 main{padding:20px 0 110px}
 .notice{margin:0 0 14px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);border-left:4px solid var(--gold);background:var(--surface);font-size:.95rem}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px}
-section{padding:22px 12px 20px;scroll-margin-top:62px}
-section+section{border-top:1px solid var(--line)}
+section{padding:22px 12px 20px}
+section:not(.on){display:none}
 .sec-head{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;padding:0 8px;margin:0 0 8px}
 h2{font:800 1.5rem/1.2 var(--font-display);letter-spacing:-.01em;margin:0;text-wrap:balance}
 .sum{font-size:.9rem;color:var(--muted)}
@@ -186,33 +189,40 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
 .toast button{font-weight:700;color:inherit;background:none;border:1px solid currentColor;border-radius:6px;padding:4px 10px;cursor:pointer}
 
 /* party mode: one committed look, the same in either theme */
-#deck{position:fixed;inset:0;z-index:60;color-scheme:dark;color:#F7F1E3;background:radial-gradient(120% 90% at 50% 0%,#1D4D37 0%,#0F2B1F 55%,#0A1E15 100%);display:grid;grid-template-rows:minmax(0,1fr) auto;font-family:var(--font-body)}
+/* Party mode: the Canva deck's world. Peach sky, snowy ground with teal pine silhouettes,
+   coral brush-script headlines, teal body text, small-caps sans for labels. */
+#deck{position:fixed;inset:0;z-index:60;color-scheme:light;--peach:#FBE6DC;--peach2:#F6D5C8;--coral:#E8553E;--teal:#2F5F5A;--teal2:#496F6B;--pine:#2E4F4B;--snow:#FFFFFF;--mint:#CFE3DF;color:var(--teal);background:var(--peach);display:grid;grid-template-rows:minmax(0,1fr) auto;font-family:var(--font-body);font-weight:600}
 #snow{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.slide{position:relative;overflow:auto;display:flex;padding:clamp(20px,6vmin,84px);touch-action:pan-y;cursor:pointer;-webkit-user-select:none;user-select:none}
-.slide-inner{margin:auto;width:100%;max-width:1240px;display:flex;flex-direction:column;gap:clamp(10px,2.6vmin,30px)}
-.d-eyebrow{margin:0;font-weight:700;font-size:clamp(.9rem,2.6vmin,1.7rem);letter-spacing:.14em;text-transform:uppercase;color:#E8BC4E;font-variant-numeric:tabular-nums}
-.d-h1{margin:0;font:800 clamp(2.3rem,11vmin,7.6rem)/1 var(--font-display);letter-spacing:-.025em;text-wrap:balance;overflow-wrap:anywhere}
-.d-h2{margin:0;font:800 clamp(1.9rem,7.5vmin,5rem)/1.05 var(--font-display);letter-spacing:-.02em;text-wrap:balance}
-.d-p{margin:0;font-size:clamp(1.15rem,3.8vmin,2.5rem);line-height:1.35;white-space:pre-wrap;max-width:32em;overflow-wrap:anywhere}
-.d-p.small{font-size:clamp(1rem,2.9vmin,1.9rem)}
-.d-p.dim{opacity:.75}
-.d-list{list-style:none;margin:0;padding:0;display:grid;gap:clamp(6px,1.5vmin,16px) clamp(16px,5vmin,64px);font-size:clamp(1.05rem,3.1vmin,2.05rem);line-height:1.25}
+.slide{position:relative;overflow:auto;display:flex;padding:clamp(20px,5vmin,70px) clamp(20px,7vmin,110px) clamp(90px,24vmin,240px);touch-action:pan-y;cursor:pointer;-webkit-user-select:none;user-select:none}
+.slide-inner{margin:auto;width:100%;max-width:1240px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:clamp(8px,2.2vmin,26px)}
+.slide-inner.left{align-items:flex-start;text-align:left}
+.d-eyebrow{margin:0;font-weight:700;font-size:clamp(.85rem,2.4vmin,1.5rem);letter-spacing:.22em;text-transform:uppercase;color:var(--teal2);font-variant-numeric:tabular-nums}
+.d-h1{margin:0;font:400 clamp(2.8rem,13vmin,9rem)/1 "Caveat Brush",var(--font-display);color:var(--coral);text-wrap:balance;overflow-wrap:anywhere;transform:rotate(-2deg)}
+.d-h2{margin:0;font:400 clamp(2.3rem,9vmin,6rem)/1.05 "Caveat Brush",var(--font-display);color:var(--coral);text-wrap:balance;transform:rotate(-1.5deg)}
+.d-p{margin:0;font-size:clamp(1.15rem,3.6vmin,2.4rem);line-height:1.35;white-space:pre-wrap;max-width:30em;overflow-wrap:anywhere;color:var(--teal)}
+.d-p.small{font-size:clamp(1rem,2.8vmin,1.8rem);font-weight:400}
+.d-p.dim{opacity:.8;font-weight:400}
+.d-list{list-style:none;margin:0 auto;padding:0;display:grid;width:max-content;max-width:100%;gap:clamp(6px,1.4vmin,14px) clamp(16px,5vmin,64px);font-size:clamp(1.05rem,3vmin,2rem);line-height:1.25;text-align:left}
 .d-list.cols{grid-template-columns:repeat(auto-fit,minmax(min(100%,15em),1fr))}
 .d-list li{display:flex;gap:.7em;align-items:baseline;border-radius:10px}
-.d-list .t{flex:none;min-width:8.8em;color:#E8BC4E;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.d-list .t{flex:none;min-width:8.8em;color:var(--coral);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .d-list .t.short{min-width:1.6em;text-align:right}
 .d-list .t.cat{min-width:4.6em}
-.d-list small{font-size:.8em;opacity:.7}
-.d-list li.live{background:rgba(232,188,78,.16);outline:2px solid #E8BC4E;padding:.2em .5em;margin:-.2em -.5em}
-.deck-bar{position:relative;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(0,0,0,.3);font-size:.95rem}
-.deck-bar button{font-weight:700;font-size:.9rem;color:inherit;background:rgba(255,255,255,.12);border:0;border-radius:8px;padding:9px 12px;min-width:42px;cursor:pointer;white-space:nowrap}
-.deck-bar button:hover{background:rgba(255,255,255,.22)}
-.deck-bar :focus-visible{outline-color:#E8BC4E}
+.d-list small{font-size:.8em;opacity:.7;font-weight:400}
+.d-list li.live{background:var(--snow);outline:2px solid var(--coral);padding:.2em .5em;margin:-.2em -.5em}
+.d-rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(4px,1.2vmin,12px);font-size:clamp(1.05rem,3vmin,1.95rem);line-height:1.3;font-weight:400;max-width:34em;text-align:left}
+.d-rules li{display:flex;gap:.5em;align-items:baseline}
+.d-rules li::before{content:"\2605";color:var(--coral);flex:none;font-size:.85em}
+.d-rules li:nth-child(even)::before{content:"\2726"}
+.deck-bar{position:relative;display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--pine);color:#F2F7F5;font-size:.95rem;font-weight:400}
+.deck-bar button{font-weight:700;font-size:.9rem;color:inherit;background:rgba(255,255,255,.14);border:0;border-radius:8px;padding:9px 12px;min-width:42px;cursor:pointer;white-space:nowrap}
+.deck-bar button:hover{background:rgba(255,255,255,.26)}
+.deck-bar :focus-visible{outline-color:var(--coral)}
 #d-clock{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 #d-next{flex:1;min-width:0;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #d-count{font-variant-numeric:tabular-nums;white-space:nowrap;opacity:.85}
-#d-prog{position:absolute;left:0;top:0;height:3px;width:0;background:#E8BC4E}
-#d-now{background:#E8BC4E;color:#1A1405}
+#d-prog{position:absolute;left:0;top:0;height:3px;width:0;background:var(--coral)}
+#d-now{background:var(--coral);color:#FFF}
 @media (max-width:560px){
   .deck-bar{flex-wrap:wrap}
   #d-next{flex:1 1 calc(100% - 100px)}
@@ -245,12 +255,12 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
 
 <div class="tabs">
   <div class="wrap">
-    <nav aria-label="Sections">
-      <button class="tab" type="button" data-go="sec-schedule">Schedule</button>
-      <button class="tab" type="button" data-go="sec-games">Games</button>
-      <button class="tab" type="button" data-go="sec-food">Food</button>
-      <button class="tab" type="button" data-go="sec-gifts">Gift exchange</button>
-      <button class="tab" type="button" data-go="sec-todo">To decide</button>
+    <nav aria-label="Sections" role="tablist">
+      <button class="tab" type="button" role="tab" data-go="schedule" aria-controls="sec-schedule">Schedule</button>
+      <button class="tab" type="button" role="tab" data-go="games" aria-controls="sec-games">Games</button>
+      <button class="tab" type="button" role="tab" data-go="food" aria-controls="sec-food">Food</button>
+      <button class="tab" type="button" role="tab" data-go="gifts" aria-controls="sec-gifts">Gift exchange</button>
+      <button class="tab" type="button" role="tab" data-go="todo" aria-controls="sec-todo">To decide</button>
     </nav>
     <button class="btn-party" type="button" id="open-deck">Party mode</button>
   </div>
@@ -661,7 +671,7 @@ function render() {
 /* ---------- add, delete, draw ---------- */
 document.addEventListener('click', async e => {
   const add = e.target.closest('[data-add]'), del = e.target.closest('[data-del]'), go = e.target.closest('[data-go]');
-  if (go) { $('#' + go.dataset.go).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); return; }
+  if (go) { goTab(go.dataset.go); return; }
   if (!db || readOnly || !ready) return;
   if (add) {
     const coll = add.dataset.add, data = { ...DEFAULTS[coll], order: Date.now() };
@@ -730,6 +740,11 @@ function renderDeck() {
   curIdx = i; curKey = slides[i].key;
   drawSlide(); tick();
 }
+function rulesList(text) {
+  const ul = h('ul', 'd-rules');
+  text.split(/\n+/).map(l => l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, '').trim()).filter(Boolean).forEach(l => ul.appendChild(h('li', '', l)));
+  return ul;
+}
 function drawSlide() {
   const sl = slides[curIdx], box = $('#slide'), inner = h('div', 'slide-inner');
   const live = liveSlot();
@@ -766,13 +781,13 @@ function drawSlide() {
       if (games.length) inner.appendChild(ul);
     } else if (s.deck === 'gifts') {
       if (txt(S.gifts.budget)) inner.appendChild(h('p', 'd-p', 'Budget: ' + txt(S.gifts.budget)));
-      if (txt(S.gifts.rules)) inner.appendChild(h('p', 'd-p small', txt(S.gifts.rules)));
+      if (txt(S.gifts.rules)) inner.appendChild(rulesList(txt(S.gifts.rules)));
     }
   } else if (sl.type === 'game') {
     const g = sl.game;
     inner.appendChild(h('p', 'd-eyebrow', 'Game ' + sl.n + ' of ' + sl.of + (Number(g.mins) ? ' · ' + Number(g.mins) + ' min' : '')));
     inner.appendChild(h('h1', 'd-h1', txt(g.name)));
-    if (txt(g.how)) inner.appendChild(h('p', 'd-p', txt(g.how)));
+    if (txt(g.how)) inner.appendChild(/\n/.test(txt(g.how)) ? rulesList(txt(g.how)) : h('p', 'd-p', txt(g.how)));
     if (txt(g.lead)) inner.appendChild(h('p', 'd-p small dim', 'Led by ' + txt(g.lead)));
   } else if (sl.type === 'order') {
     inner.appendChild(h('p', 'd-eyebrow', txt(sl.slot.title)));
@@ -817,9 +832,23 @@ function closeDeck() {
   try { if (wake) { wake.release(); wake = null; } } catch (e) {}
   try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
 }
-function route(name) { const hsh = name != null ? '#' + name : location.hash; if (hsh === '#party') openDeck(); else closeDeck(); }
-function go(name) { try { location.hash = name; } catch (e) {} route(name); }
+const TABS = ['schedule', 'games', 'food', 'gifts', 'todo'];
+let curTab = 'schedule';
+function showTab(name) {
+  curTab = TABS.includes(name) ? name : 'schedule';
+  TABS.forEach(t => { $('#sec-' + t).classList.toggle('on', t === curTab); const b = $('[data-go="' + t + '"]'); b.setAttribute('aria-selected', t === curTab); b.tabIndex = t === curTab ? 0 : -1; });
+}
+function goTab(name) { showTab(name); try { if (location.hash !== '#' + curTab) location.hash = curTab; } catch (e) {} scrollTo({ top: 0, behavior: 'auto' }); }
+function route(name) {
+  const hsh = name != null ? '#' + name : location.hash;
+  if (hsh === '#party') { openDeck(); return; }
+  closeDeck();
+  const t = hsh.slice(1);
+  if (TABS.includes(t)) showTab(t); else showTab(curTab);
+}
+function go(name) { try { location.hash = name === 'plan' ? curTab : name; } catch (e) {} route(name === 'plan' ? curTab : name); }
 window.addEventListener('hashchange', () => route());
+$('nav[role="tablist"]').addEventListener('keydown', e => { if (!['ArrowLeft', 'ArrowRight'].includes(e.key) || !e.target.matches('.tab')) return; e.preventDefault(); const i = TABS.indexOf(curTab), n = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length]; goTab(n); $('[data-go="' + n + '"]').focus(); });
 $('#open-deck').addEventListener('click', () => go('party'));
 $('#d-exit').addEventListener('click', () => go('plan'));
 $('#d-prev').addEventListener('click', () => goSlide(curIdx - 1));
@@ -853,21 +882,41 @@ $('#slide').addEventListener('pointerup', e => {
 function startSnow() {
   const cv = $('#snow'), ctx = cv.getContext('2d');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let w = 0, hgt = 0, flakes = [];
+  let w = 0, hgt = 0, flakes = [], trees = [];
+  const seed = (() => { let x = 7; return () => (x = (x * 48271) % 2147483647) / 2147483647; })();
   const size = () => {
     const r = Math.min(devicePixelRatio || 1, 2); w = cv.clientWidth; hgt = cv.clientHeight;
     cv.width = w * r; cv.height = hgt * r; ctx.setTransform(r, 0, 0, r, 0, 0);
+    const n = Math.max(6, Math.round(w / 140)); trees = [];
+    for (let i = 0; i < n; i++) trees.push({ x: (i + 0.5) / n * w + (seed() - 0.5) * (w / n) * 0.7, s: 0.55 + seed() * 0.9, far: i % 3 === 1 });
+  };
+  const tree = (x, base, hsz, dark) => {
+    ctx.fillStyle = dark ? '#2E4F4B' : '#5F8A84';
+    for (let k = 0; k < 3; k++) { const tier = base - hsz * (0.22 * k), half = hsz * (0.42 - 0.1 * k), top = tier - hsz * 0.45; ctx.beginPath(); ctx.moveTo(x - half, tier); ctx.lineTo(x, top); ctx.lineTo(x + half, tier); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = '#FFFFFF';
+    for (let k = 0; k < 3; k++) { const tier = base - hsz * (0.22 * k), half = hsz * (0.42 - 0.1 * k); ctx.beginPath(); ctx.moveTo(x - half * 0.75, tier - hsz * 0.05); ctx.quadraticCurveTo(x, tier - hsz * 0.16, x + half * 0.75, tier - hsz * 0.05); ctx.quadraticCurveTo(x, tier + hsz * 0.02, x - half * 0.75, tier - hsz * 0.05); ctx.fill(); }
+    ctx.fillStyle = '#7A4A3A'; ctx.fillRect(x - hsz * 0.04, base, hsz * 0.08, hsz * 0.12);
+  };
+  const scene = () => {
+    const g = hgt * 0.84;
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(0, g + 10);
+    for (let x = 0; x <= w; x += 20) ctx.lineTo(x, g + Math.sin(x / 160) * 6 + Math.cos(x / 53) * 3);
+    ctx.lineTo(w, hgt); ctx.lineTo(0, hgt); ctx.closePath(); ctx.fill();
+    trees.filter(t => t.far).forEach(t => tree(t.x, g + 4, Math.min(w, hgt) * 0.11 * t.s, false));
+    trees.filter(t => !t.far).forEach(t => tree(t.x, g + 8, Math.min(w, hgt) * 0.15 * t.s, true));
   };
   size();
-  flakes = Array.from({ length: 70 }, () => ({ x: Math.random() * w, y: Math.random() * hgt, r: 1 + Math.random() * 2.4, v: 0.25 + Math.random() * 0.7, p: Math.random() * 6.28 }));
+  flakes = Array.from({ length: 70 }, () => ({ x: Math.random() * w, y: Math.random() * hgt, r: 1.2 + Math.random() * 2.6, v: 0.25 + Math.random() * 0.7, p: Math.random() * 6.28 }));
   const frame = () => {
     if (!deckOpen) return;
     if (cv.clientWidth !== w || cv.clientHeight !== hgt) size();
     ctx.clearRect(0, 0, w, hgt);
+    scene();
     for (const f of flakes) {
       if (!still) { f.y += f.v; f.p += 0.01; f.x += Math.sin(f.p) * 0.3; if (f.y > hgt + 4) { f.y = -4; f.x = Math.random() * w; } }
-      ctx.globalAlpha = 0.18 + f.r / 8; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.globalAlpha = 0.5 + f.r / 8; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fillStyle = '#fff'; ctx.fill();
     }
+    ctx.globalAlpha = 1;
     if (!still) snowRAF = requestAnimationFrame(frame);
   };
   frame();
