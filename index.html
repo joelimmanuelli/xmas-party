@@ -74,7 +74,8 @@ textarea.title{font:800 clamp(1.9rem,6vw,3.1rem)/1.08 var(--font-display);letter
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 16px;margin-top:8px}
 .fact{display:flex;flex-direction:column;min-width:0}
 .fact>span{padding:0 8px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.pair{display:flex;align-items:center;gap:2px}
+.pair{display:flex;align-items:center;flex-wrap:wrap;gap:2px}
+@media (min-width:700px){.fact.when{grid-column:span 2}}
 .pair .f{width:auto;flex:0 1 auto}
 .pair i{font-style:normal;color:var(--muted);font-size:.9rem}
 
@@ -241,7 +242,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     <textarea class="f title" rows="1" id="main-title" data-path="plan/main" data-f="title" aria-label="Party name" placeholder="Party name"></textarea>
     <div class="facts">
       <label class="fact"><span>Date</span><input class="f" type="date" id="main-date" data-path="plan/main" data-f="date"></label>
-      <div class="fact"><span>Time</span>
+      <div class="fact when"><span>Time</span>
         <div class="pair">
           <input class="f" type="time" id="main-start" data-path="plan/main" data-f="start" aria-label="Party starts">
           <i>to</i>
