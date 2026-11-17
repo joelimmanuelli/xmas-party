@@ -138,6 +138,8 @@ h2{font:800 1.5rem/1.2 var(--font-display);letter-spacing:-.01em;margin:0;text-w
 }
 
 /* games */
+.lyrics.f{min-height:7em;line-height:1.45}
+.song-meta .f{max-width:110px}
 .game{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:2px 10px;padding:12px 0}
 .game-body{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mins{max-width:76px;flex:0 0 76px!important}
@@ -215,6 +217,9 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
 .d-list .t.cat{min-width:4.6em}
 .d-list small{font-size:.8em;opacity:.7;font-weight:400}
 .d-list li.live{background:var(--snow);outline:2px solid var(--coral);padding:.2em .5em;margin:-.2em -.5em}
+.d-lyrics{margin:0;font-size:clamp(1.3rem,5vmin,3.3rem);line-height:1.4;white-space:pre-wrap;color:var(--teal);max-width:26em;overflow-wrap:anywhere}
+.d-lyrics.long{font-size:clamp(1.1rem,3.8vmin,2.5rem)}
+.d-lyrics.xlong{font-size:clamp(1rem,3vmin,2rem)}
 .d-rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(4px,1.2vmin,12px);font-size:clamp(1.05rem,3vmin,1.95rem);line-height:1.3;font-weight:400;max-width:34em;text-align:left}
 .d-rules li{display:flex;gap:.5em;align-items:baseline}
 .d-rules li::before{content:"\2605";color:var(--coral);flex:none;font-size:.85em}
@@ -264,6 +269,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <button class="tab" type="button" role="tab" data-go="schedule" aria-controls="sec-schedule">Schedule</button>
       <button class="tab" type="button" role="tab" data-go="games" aria-controls="sec-games">Games</button>
       <button class="tab" type="button" role="tab" data-go="food" aria-controls="sec-food">Food</button>
+      <button class="tab" type="button" role="tab" data-go="worship" aria-controls="sec-worship">Worship</button>
       <button class="tab" type="button" role="tab" data-go="gifts" aria-controls="sec-gifts">Gift exchange</button>
       <button class="tab" type="button" role="tab" data-go="todo" aria-controls="sec-todo">To decide</button>
     </nav>
@@ -296,6 +302,14 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <div class="rows" id="list-food"></div>
       <p class="empty" id="empty-food" hidden>Nothing on the list yet. Add what you're bringing so nobody doubles up.</p>
       <button class="add" type="button" data-add="food">+ Add a dish or drink</button>
+    </section>
+
+    <section id="sec-worship">
+      <div class="sec-head"><h2>Worship set</h2><span class="sum" id="sum-songs"></span></div>
+      <p class="hint">Songs play in this order. Paste the lyrics with a blank line between verses: each verse becomes its own slide in party mode.</p>
+      <div class="rows" id="list-songs"></div>
+      <p class="empty" id="empty-songs" hidden>No songs yet. Add the first one in the set.</p>
+      <button class="add" type="button" data-add="songs">+ Add a song</button>
     </section>
 
     <section id="sec-gifts">
@@ -361,6 +375,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
             <option value="food">Slide + food list</option>
             <option value="games">Slide + games</option>
             <option value="gifts">Slide + gift rules</option>
+            <option value="worship">Slide + worship set</option>
             <option value="off">Leave out</option>
           </select>
         </label>
@@ -384,6 +399,22 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       </div>
     </div>
     <button class="del" type="button" data-del aria-label="Delete this game">×</button>
+  </article>
+</template>
+
+<template id="tpl-songs">
+  <article class="game">
+    <div class="game-body">
+      <input class="f row-title" data-f="title" placeholder="Song title" aria-label="Song title">
+      <div class="meta song-meta">
+        <label class="inline">Artist <input class="f" data-f="artist" placeholder="Who wrote or sings it"></label>
+        <label class="inline">Key <input class="f" data-f="key" placeholder="e.g. G"></label>
+        <label class="inline">Led by <input class="f" data-f="lead" placeholder="Name"></label>
+        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in party mode</span></label>
+      </div>
+      <textarea class="f lyrics" rows="4" data-f="lyrics" placeholder="Paste lyrics here. Leave a blank line between verses." aria-label="Lyrics"></textarea>
+    </div>
+    <button class="del" type="button" data-del aria-label="Delete this song">×</button>
   </article>
 </template>
 
@@ -433,12 +464,12 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
-const COLLS = ['schedule', 'games', 'food', 'people', 'todo'];
-const DEFAULTS = { schedule: { deck: 'plain' }, games: { show: true }, food: { cat: 'main' }, people: {}, todo: {} };
-const LABEL_FIELD = { schedule: 'title', games: 'name', food: 'item', people: 'name', todo: 'text' };
+const COLLS = ['schedule', 'games', 'food', 'songs', 'people', 'todo'];
+const DEFAULTS = { schedule: { deck: 'plain' }, games: { show: true }, food: { cat: 'main' }, songs: { show: true }, people: {}, todo: {} };
+const LABEL_FIELD = { schedule: 'title', games: 'name', songs: 'title', food: 'item', people: 'name', todo: 'text' };
 const CATS = [['main', 'Main', 'mains'], ['side', 'Side', 'sides'], ['dessert', 'Dessert', 'desserts'], ['drinks', 'Drinks', 'drinks'], ['other', 'Other', 'other']];
 
-const S = { main: {}, gifts: {}, exists: { main: false, gifts: false }, schedule: [], games: [], food: [], people: [], todo: [] };
+const S = { main: {}, gifts: {}, exists: { main: false, gifts: false }, schedule: [], games: [], food: [], songs: [], people: [], todo: [] };
 let db = null, ready = false, readOnly = false, canWrite = null, wroteOk = false;
 const dirty = new Set();
 const queues = new Map();
@@ -631,6 +662,12 @@ function render() {
     gs.classList.toggle('over', over);
   }
 
+  // worship set
+  const songs = byOrder(S.songs);
+  syncList('songs', songs, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in party mode' : 'Not in party mode'; });
+  const songsOn = songs.filter(g => g.show !== false);
+  $('#sum-songs').textContent = songs.length ? songs.length + (songs.length === 1 ? ' song' : ' songs') + (songsOn.length < songs.length ? ' · ' + songsOn.length + ' in party mode' : '') : '';
+
   // food
   const food = byOrder(S.food);
   syncList('food', food);
@@ -722,6 +759,7 @@ $('#draw').addEventListener('click', () => {
 /* ---------- party mode ---------- */
 let deckOpen = false, slides = [], curKey = 'cover', curIdx = 0, clockT = 0, snowRAF = 0, wake = null, lastLiveId = null;
 const slotsInDeck = () => sortedSchedule().filter(s => (s.deck || 'plain') !== 'off' && txt(s.title));
+const setList = () => byOrder(S.songs).filter(g => txt(g.title) && g.show !== false);
 function buildSlides() {
   const slots = slotsInDeck(), list = [{ key: 'cover', type: 'cover' }];
   if (slots.length) list.push({ key: 'overview', type: 'overview', label: "Tonight's plan" });
@@ -732,6 +770,11 @@ function buildSlides() {
     list.push({ key: 'slot-' + s.id, type: 'slot', slot: s, label: txt(s.title) + (fmtTime(s.start) ? ' at ' + fmtTime(s.start) : '') });
     if (s.deck === 'games') games.forEach((g, i) => list.push({ key: 'game-' + g.id, type: 'game', slot: s, game: g, n: i + 1, of: games.length, label: 'Game: ' + txt(g.name) }));
     if (s.deck === 'gifts' && order.length) list.push({ key: 'order-' + s.id, type: 'order', slot: s, order, label: 'Picking order' });
+    if (s.deck === 'worship') setList().forEach((g, i, all) => {
+      const verses = txt(g.lyrics).split(/\n\s*\n/).map(v => v.trim()).filter(Boolean);
+      if (!verses.length) list.push({ key: 'song-' + g.id, type: 'song', song: g, n: i + 1, of: all.length, label: 'Song: ' + txt(g.title) });
+      verses.forEach((v, k) => list.push({ key: 'song-' + g.id + '-' + k, type: 'song', song: g, n: i + 1, of: all.length, verse: v, k: k + 1, m: verses.length, label: k ? txt(g.title) + ' (' + (k + 1) + '/' + verses.length + ')' : 'Song: ' + txt(g.title) }));
+    });
   }
   return list;
 }
@@ -786,6 +829,10 @@ function drawSlide() {
       const ul = h('ul', 'd-list cols');
       games.forEach((g, i) => { const li = h('li'); li.appendChild(h('span', 't short', String(i + 1))); li.appendChild(h('span', '', txt(g.name))); ul.appendChild(li); });
       if (games.length) inner.appendChild(ul);
+    } else if (s.deck === 'worship') {
+      const ul = h('ul', 'd-list cols');
+      setList().forEach((g, i) => { const li = h('li'); li.appendChild(h('span', 't short', String(i + 1))); const sp = h('span', '', txt(g.title) + ' '); if (txt(g.artist)) sp.appendChild(h('small', '', txt(g.artist))); li.appendChild(sp); ul.appendChild(li); });
+      if (setList().length) inner.appendChild(ul);
     } else if (s.deck === 'gifts') {
       if (txt(S.gifts.budget)) inner.appendChild(h('p', 'd-p', 'Budget: ' + txt(S.gifts.budget)));
       if (txt(S.gifts.rules)) inner.appendChild(rulesList(txt(S.gifts.rules)));
@@ -796,6 +843,17 @@ function drawSlide() {
     inner.appendChild(h('h1', 'd-h1', txt(g.name)));
     if (txt(g.how)) inner.appendChild(/\n/.test(txt(g.how)) ? rulesList(txt(g.how)) : h('p', 'd-p', txt(g.how)));
     if (txt(g.lead)) inner.appendChild(h('p', 'd-p small dim', 'Led by ' + txt(g.lead)));
+  } else if (sl.type === 'song') {
+    const g = sl.song;
+    if (!sl.verse) {
+      inner.appendChild(h('p', 'd-eyebrow', 'Song ' + sl.n + ' of ' + sl.of));
+      inner.appendChild(h('h1', 'd-h1', txt(g.title)));
+      if (txt(g.artist)) inner.appendChild(h('p', 'd-p dim', txt(g.artist)));
+    } else {
+      inner.appendChild(h('p', 'd-eyebrow', txt(g.title) + (sl.m > 1 ? ' · ' + sl.k + ' / ' + sl.m : '')));
+      const lines = sl.verse.split('\n').length;
+      inner.appendChild(h('p', 'd-lyrics' + (lines > 8 ? ' xlong' : lines > 5 ? ' long' : ''), sl.verse));
+    }
   } else if (sl.type === 'order') {
     inner.appendChild(h('p', 'd-eyebrow', txt(sl.slot.title)));
     inner.appendChild(h('h2', 'd-h2', 'Picking order'));
@@ -839,7 +897,7 @@ function closeDeck() {
   try { if (wake) { wake.release(); wake = null; } } catch (e) {}
   try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
 }
-const TABS = ['schedule', 'games', 'food', 'gifts', 'todo'];
+const TABS = ['schedule', 'games', 'food', 'worship', 'gifts', 'todo'];
 let curTab = 'schedule';
 function showTab(name) {
   curTab = TABS.includes(name) ? name : 'schedule';
