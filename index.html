@@ -277,7 +277,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <button class="tab" type="button" role="tab" data-go="gifts" aria-controls="sec-gifts">Gift exchange</button>
       <button class="tab" type="button" role="tab" data-go="todo" aria-controls="sec-todo">To decide</button>
     </nav>
-    <button class="btn-party" type="button" id="open-deck">Party mode</button>
+    <button class="btn-party" type="button" id="open-deck">Deck</button>
   </div>
 </div>
 
@@ -287,7 +287,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
 
     <section id="sec-schedule">
       <div class="sec-head"><h2>Schedule</h2><span class="sum" id="sum-schedule"></span></div>
-      <p class="hint">Slots sort themselves by start time. Planning notes stay here. Party mode shows the title and the slide words only.</p>
+      <p class="hint">Slots sort themselves by start time. Planning notes stay here. The deck shows the title and the slide words only.</p>
       <div class="rows" id="list-schedule"></div>
       <p class="empty" id="empty-schedule" hidden>No slots yet.</p>
       <button class="add" type="button" data-add="schedule">+ Add a slot</button>
@@ -296,7 +296,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     <section id="sec-games">
       <div class="sec-head"><h2>Games</h2><span class="sum" id="sum-games"></span></div>
       <div class="rows" id="list-games"></div>
-      <p class="empty" id="empty-games" hidden>No games yet. Each game you add gets its own slide in party mode.</p>
+      <p class="empty" id="empty-games" hidden>No games yet. Each game you add gets its own slide in the deck.</p>
       <button class="add" type="button" data-add="games">+ Add a game</button>
     </section>
 
@@ -310,7 +310,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
 
     <section id="sec-worship">
       <div class="sec-head"><h2>Worship set</h2><span class="sum" id="sum-songs"></span><button class="share act" type="button" data-share="worship">Copy link to share</button></div>
-      <p class="hint">Songs play in this order. Paste the lyrics with a blank line between verses: each verse becomes its own slide in party mode.</p>
+      <p class="hint">Songs play in this order. Paste the lyrics with a blank line between verses: each verse becomes its own slide in the deck.</p>
       <div class="rows" id="list-songs"></div>
       <p class="empty" id="empty-songs" hidden>No songs yet. Add the first one in the set.</p>
       <button class="add" type="button" data-add="songs">+ Add a song</button>
@@ -320,7 +320,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <div class="sec-head"><h2>Gift exchange</h2><span class="sum" id="sum-people"></span></div>
       <div class="gift-top">
         <label class="fact"><span>Budget</span><input class="f" id="gifts-budget" data-path="plan/gifts" data-f="budget" placeholder="e.g. $20"></label>
-        <label class="fact"><span>Rules (shown in party mode)</span><textarea class="f" rows="3" id="gifts-rules" data-path="plan/gifts" data-f="rules" placeholder="How the exchange works"></textarea></label>
+        <label class="fact"><span>Rules (shown in the deck)</span><textarea class="f" rows="3" id="gifts-rules" data-path="plan/gifts" data-f="rules" placeholder="How the exchange works"></textarea></label>
       </div>
       <h3>Who's in</h3>
       <div class="rows" id="list-people"></div>
@@ -370,10 +370,10 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     </div>
     <div class="slot-body">
       <input class="f row-title" data-f="title" placeholder="What's happening" aria-label="Slot title">
-      <textarea class="f" rows="1" data-f="note" placeholder="Planning notes (not shown in party mode)" aria-label="Planning notes"></textarea>
+      <textarea class="f" rows="1" data-f="note" placeholder="Planning notes (not shown in the deck)" aria-label="Planning notes"></textarea>
       <div class="meta">
         <label class="inline">In charge <input class="f" data-f="lead" placeholder="Name"></label>
-        <label class="inline">Party mode
+        <label class="inline">Deck
           <select class="f" data-f="deck">
             <option value="plain">Show a slide</option>
             <option value="food">Slide + food list</option>
@@ -399,7 +399,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <div class="meta">
         <label class="inline">Minutes <input class="f mins" type="number" inputmode="numeric" min="0" max="180" data-f="mins" data-num></label>
         <label class="inline">Led by <input class="f" data-f="lead" placeholder="Name"></label>
-        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in party mode</span></label>
+        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in deck</span></label>
       </div>
     </div>
     <button class="del" type="button" data-del aria-label="Delete this game">×</button>
@@ -414,7 +414,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
         <label class="inline">Artist <input class="f" data-f="artist" placeholder="Who wrote or sings it"></label>
         <label class="inline">Key <input class="f" data-f="key" placeholder="e.g. G"></label>
         <label class="inline">Led by <input class="f" data-f="lead" placeholder="Name"></label>
-        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in party mode</span></label>
+        <label class="check"><input type="checkbox" data-f="show"> <span class="show-label">Show in deck</span></label>
       </div>
       <textarea class="f lyrics" rows="4" data-f="lyrics" placeholder="Paste lyrics here. Leave a blank line between verses." aria-label="Lyrics"></textarea>
     </div>
@@ -656,7 +656,7 @@ function render() {
 
   // games
   const games = byOrder(S.games);
-  syncList('games', games, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in party mode' : 'Not in party mode'; });
+  syncList('games', games, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in deck' : 'Not in deck'; });
   const inDeck = games.filter(g => g.show !== false);
   const gameSlot = sched.find(s => s.deck === 'games'), slotLen = gameSlot ? dur(gameSlot) : null;
   const total = inDeck.reduce((n, g) => n + (Number(g.mins) || 0), 0);
@@ -664,15 +664,15 @@ function render() {
   if (!games.length) { gs.textContent = slotLen ? slotLen + ' min slot to fill' : ''; gs.classList.remove('over'); }
   else {
     const over = slotLen != null && total > slotLen;
-    gs.textContent = games.length + (games.length === 1 ? ' game' : ' games') + (inDeck.length < games.length ? ' · ' + inDeck.length + ' in party mode' : '') + ' · ' + total + ' min planned' + (slotLen != null ? ' of the ' + slotLen + ' min slot' : '') + (over ? ' (over by ' + (total - slotLen) + ')' : '');
+    gs.textContent = games.length + (games.length === 1 ? ' game' : ' games') + (inDeck.length < games.length ? ' · ' + inDeck.length + ' in deck' : '') + ' · ' + total + ' min planned' + (slotLen != null ? ' of the ' + slotLen + ' min slot' : '') + (over ? ' (over by ' + (total - slotLen) + ')' : '');
     gs.classList.toggle('over', over);
   }
 
   // worship set
   const songs = byOrder(S.songs);
-  syncList('songs', songs, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in party mode' : 'Not in party mode'; });
+  syncList('songs', songs, (el, g) => { const on = g.show !== false; el.classList.toggle('off', !on); $('.show-label', el).textContent = on ? 'Show in deck' : 'Not in deck'; });
   const songsOn = songs.filter(g => g.show !== false);
-  $('#sum-songs').textContent = songs.length ? songs.length + (songs.length === 1 ? ' song' : ' songs') + (songsOn.length < songs.length ? ' · ' + songsOn.length + ' in party mode' : '') : '';
+  $('#sum-songs').textContent = songs.length ? songs.length + (songs.length === 1 ? ' song' : ' songs') + (songsOn.length < songs.length ? ' · ' + songsOn.length + ' in deck' : '') : '';
 
   // food
   const food = byOrder(S.food);
@@ -923,7 +923,7 @@ function goTab(name) { if (ONLY) return; showTab(name); try { if (location.hash 
 function route(name) {
   if (ONLY) { closeDeck(); showTab(ONLY); return; }
   const hsh = name != null ? '#' + name : location.hash;
-  if (hsh === '#party') { openDeck(); return; }
+  if (hsh === '#deck' || hsh === '#party') { openDeck(); return; }
   closeDeck();
   const t = hsh.slice(1);
   if (TABS.includes(t)) showTab(t); else showTab(curTab);
@@ -931,7 +931,7 @@ function route(name) {
 function go(name) { try { location.hash = name === 'plan' ? curTab : name; } catch (e) {} route(name === 'plan' ? curTab : name); }
 window.addEventListener('hashchange', () => route());
 $('nav[role="tablist"]').addEventListener('keydown', e => { if (!['ArrowLeft', 'ArrowRight'].includes(e.key) || !e.target.matches('.tab')) return; e.preventDefault(); const i = TABS.indexOf(curTab), n = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length]; goTab(n); $('[data-go="' + n + '"]').focus(); });
-$('#open-deck').addEventListener('click', () => go('party'));
+$('#open-deck').addEventListener('click', () => go('deck'));
 $('#d-exit').addEventListener('click', () => go('plan'));
 $('#d-prev').addEventListener('click', () => goSlide(curIdx - 1));
 $('#d-nextbtn').addEventListener('click', () => goSlide(curIdx + 1));
