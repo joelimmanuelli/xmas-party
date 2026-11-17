@@ -75,7 +75,7 @@ textarea.title{font:800 clamp(1.9rem,6vw,3.1rem)/1.08 var(--font-display);letter
 .fact{display:flex;flex-direction:column;min-width:0}
 .fact>span{padding:0 8px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .pair{display:flex;align-items:center;flex-wrap:wrap;gap:2px}
-@media (min-width:700px){.fact.when{grid-column:span 2}}
+@media (min-width:700px){.fact.when,.fact.wide{grid-column:span 2}}
 .pair .f{width:auto;flex:0 1 auto}
 .pair i{font-style:normal;color:var(--muted);font-size:.9rem}
 
@@ -250,7 +250,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
         </div>
       </div>
       <label class="fact"><span>Location</span><input class="f" id="main-location" data-path="plan/main" data-f="location" placeholder="Where"></label>
-      <label class="fact"><span>Dress code</span><input class="f" id="main-dress" data-path="plan/main" data-f="dress" placeholder="What to wear"></label>
+      <label class="fact wide"><span>Dress code</span><input class="f" id="main-dress" data-path="plan/main" data-f="dress" placeholder="What to wear"></label>
     </div>
   </div>
 </header>
