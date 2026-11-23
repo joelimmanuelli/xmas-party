@@ -112,6 +112,8 @@ h2{font:800 1.5rem/1.2 var(--font-display);letter-spacing:-.01em;margin:0;text-w
 .ro .add,.ro .del,.ro .act{display:none}
 .share{margin-left:auto;font-weight:600;font-size:.85rem;color:var(--pine);background:var(--field);border:0;border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .share:hover{filter:brightness(.95)}
+.steps{margin:0 0 4px;padding:0 8px 0 2em;max-width:65ch;display:flex;flex-direction:column;gap:4px}
+a.btn,a.add{display:inline-block;text-decoration:none}
 .only .tabs,.only .share{display:none}
 .only main{padding-top:16px}
 .inline{display:flex;align-items:center;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted);min-width:0}
@@ -272,6 +274,7 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
     <nav aria-label="Sections" role="tablist">
       <button class="tab" type="button" role="tab" data-go="schedule" aria-controls="sec-schedule">Schedule</button>
       <button class="tab" type="button" role="tab" data-go="games" aria-controls="sec-games">Games</button>
+      <button class="tab" type="button" role="tab" data-go="game" aria-controls="sec-game">Who Wrote This?</button>
       <button class="tab" type="button" role="tab" data-go="food" aria-controls="sec-food">Food</button>
       <button class="tab" type="button" role="tab" data-go="worship" aria-controls="sec-worship">Worship</button>
       <button class="tab" type="button" role="tab" data-go="gifts" aria-controls="sec-gifts">Gift exchange</button>
@@ -298,6 +301,20 @@ h3{font:700 .8rem var(--font-body);letter-spacing:.06em;text-transform:uppercase
       <div class="rows" id="list-games"></div>
       <p class="empty" id="empty-games" hidden>No games yet. Each game you add gets its own slide in the deck.</p>
       <button class="add" type="button" data-add="games">+ Add a game</button>
+    </section>
+
+    <section id="sec-game">
+      <div class="sec-head"><h2>Who Wrote This?</h2><button class="share" type="button" data-copy="game.html">Copy player link</button></div>
+      <p class="hint">A party game played on phones. Everyone adds up to 2 facts or photos about themselves, the game shuffles them, and everyone guesses who wrote each one. Faster right answers score more.</p>
+      <ol class="steps">
+        <li>Open the TV screen on the laptop connected to the TV, and press Start a new game.</li>
+        <li>Everyone scans the QR code on the TV, or opens the player link, and joins with their name.</li>
+        <li>When everyone's ready, press Start the game on the TV.</li>
+      </ol>
+      <div class="row-btns">
+        <a class="btn act" href="game.html#host" target="_blank" rel="noopener">Open the TV screen</a>
+        <a class="add" href="game.html" target="_blank" rel="noopener">Play on this device</a>
+      </div>
     </section>
 
     <section id="sec-food">
@@ -468,6 +485,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
+try { if (new URLSearchParams(location.search).get('only') === 'game') location.replace('game.html'); } catch (e) {}
 const ONLY = (() => { try { const v = (new URLSearchParams(location.search).get('only') || '').toLowerCase(); return ['food', 'worship'].includes(v) ? v : ''; } catch (e) { return ''; } })();
 if (ONLY) document.body.classList.add('only');
 const COLLS = ['schedule', 'games', 'food', 'songs', 'people', 'todo'];
@@ -721,6 +739,8 @@ function render() {
 
 /* ---------- share links ---------- */
 document.addEventListener('click', e => {
+  const cp = e.target.closest('[data-copy]');
+  if (cp) { const url = new URL(cp.dataset.copy, location.href).href; try { navigator.clipboard.writeText(url).then(() => toast('Player link copied. Send it in the group chat.'), () => toast(url)); } catch (err) { toast(url); } return; }
   const b = e.target.closest('[data-share]'); if (!b) return;
   const url = location.origin + location.pathname + '?only=' + b.dataset.share;
   const what = b.dataset.share === 'food' ? 'the food list' : 'the worship set';
@@ -913,7 +933,7 @@ function closeDeck() {
   try { if (wake) { wake.release(); wake = null; } } catch (e) {}
   try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
 }
-const TABS = ['schedule', 'games', 'food', 'worship', 'gifts', 'todo'];
+const TABS = ['schedule', 'games', 'game', 'food', 'worship', 'gifts', 'todo'];
 let curTab = 'schedule';
 function showTab(name) {
   curTab = TABS.includes(name) ? name : 'schedule';

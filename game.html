@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Who Wrote This?</title>
+<style>
+@font-face{font-family:"Figtree";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Figtree";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Figtree";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/figtree-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Caveat Brush";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/caveat-brush-latin-400-normal.woff2) format("woff2")}
+:root{
+  /* One world for TV and phones, taken from the party deck: peach sky, coral brush script, teal text.
+     Answer tiles use four fixed colours with a symbol each, the same order on the TV and every phone. */
+  color-scheme:light;
+  --peach:#FBE6DC; --card:#FFF7F2; --coral:#E8553E; --teal:#2F5F5A; --muted:#5E7774; --line:#EBCDBF;
+  --o1:#D9452E; --o2:#2F6B64; --o3:#A86B0A; --o4:#5A4A8C; --good:#2F7D4F;
+  --script:"Caveat Brush","Figtree",cursive; --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--peach);color:var(--teal);font:16px/1.45 var(--body);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button,input,textarea{font:inherit}
+:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
+#snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#app{position:relative;z-index:1;min-height:100%;display:flex;flex-direction:column}
+.wrap{width:100%;max-width:560px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:16px}
+.tv .wrap{max-width:1500px;padding:clamp(16px,3vmin,40px) clamp(16px,4vmin,56px)}
+h1,.script{font-family:var(--script);font-weight:400;color:var(--coral);margin:0;line-height:1;transform:rotate(-1.5deg)}
+h1{font-size:clamp(2.6rem,11vw,3.6rem)}
+.tv h1{font-size:clamp(3rem,9vmin,7rem)}
+.eyebrow{margin:0;font-size:.8rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.tv .eyebrow{font-size:clamp(.9rem,2vmin,1.4rem)}
+p{margin:0}
+.lead{font-size:1.05rem}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.btn{appearance:none;border:0;border-radius:12px;padding:14px 18px;font-weight:700;font-size:1rem;cursor:pointer;background:var(--coral);color:#fff;min-height:48px}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent;color:var(--teal);border:2px solid var(--teal)}
+.btn.small{padding:8px 12px;min-height:36px;font-size:.9rem}
+.btn.quiet{background:transparent;color:var(--muted);text-decoration:underline;padding:8px;min-height:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label.lbl{font-weight:700;font-size:.85rem;letter-spacing:.04em}
+input[type="text"],textarea{width:100%;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--teal);padding:12px 14px;font-size:1.05rem}
+input[type="text"]:focus,textarea:focus{border-color:var(--teal);outline:none}
+textarea{resize:vertical;min-height:90px}
+.count{font-size:.8rem;color:var(--muted);text-align:right}
+.err{color:var(--o1);font-weight:600;font-size:.92rem}
+.seg{display:flex;background:#fff;border:2px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:9px;font-weight:700;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--teal);color:#fff}
+.entry{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.entry .txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.entry img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--line)}
+.slot-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.85rem}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-weight:700;font-size:.85rem;background:#fff;border:1px solid var(--line)}
+.pill.ok{background:var(--good);color:#fff;border-color:var(--good)}
+.status{position:fixed;left:12px;bottom:12px;z-index:5;font-size:.8rem;font-weight:600;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted)}
+.status.bad{color:var(--o1);border-color:var(--o1)}
+
+/* question + options */
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.timer{height:8px;border-radius:999px;background:#fff;overflow:hidden;border:1px solid var(--line)}
+.timer i{display:block;height:100%;width:100%;background:var(--coral);transform-origin:left;transition:transform .25s linear}
+.fact{background:#fff;border-radius:18px;padding:18px 20px;font-size:1.25rem;font-weight:600;line-height:1.35;text-align:center;overflow-wrap:anywhere;border:1px solid var(--line)}
+.fact::before{content:"\201C"}.fact::after{content:"\201D"}
+.fact.photo::before,.fact.photo::after{content:none}
+.photo-box{background:#fff;border:6px solid #fff;border-bottom-width:28px;border-radius:6px;box-shadow:0 6px 20px rgba(80,40,20,.18);align-self:center;transform:rotate(-2deg);max-width:100%}
+.photo-box img{display:block;max-width:100%;max-height:38vh;object-fit:contain}
+.tv .photo-box img{max-height:40vh}
+.tv .rev .photo-box img{max-height:30vh}
+.tv .rev .fact{font-size:clamp(1.2rem,3.4vmin,2.4rem)}
+.ask{text-align:center;font-family:var(--script);font-size:2rem;color:var(--coral);line-height:1}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{position:relative;border:0;border-radius:14px;color:#fff;font-weight:700;font-size:1.1rem;padding:18px 12px 18px 44px;text-align:left;min-height:72px;cursor:pointer;overflow-wrap:anywhere;display:flex;align-items:center;line-height:1.2}
+.opt::before{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1.15rem}
+.opt.c0{background:var(--o1)}.opt.c0::before{content:"\2605"}
+.opt.c1{background:var(--o2)}.opt.c1::before{content:"\25CF"}
+.opt.c2{background:var(--o3)}.opt.c2::before{content:"\25B2"}
+.opt.c3{background:var(--o4)}.opt.c3::before{content:"\25C6"}
+.opt:disabled{cursor:default}
+.opts.locked .opt:not(.picked){opacity:.3}
+.opt.picked{outline:4px solid var(--teal);outline-offset:3px}
+.opts.reveal .opt:not(.right){opacity:.28}
+.opt.right{outline:4px solid var(--good);outline-offset:3px}
+.opt .n{margin-left:auto;padding-left:10px;font-size:1.3em;font-variant-numeric:tabular-nums}
+.big-msg{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:18px 8px}
+.big-msg .script{font-size:2.6rem}
+.score{font-variant-numeric:tabular-nums;font-weight:700}
+
+/* TV */
+.tv-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vmin,40px);align-items:start}
+.qr{background:#fff;border-radius:16px;padding:12px;width:clamp(170px,36vmin,380px);aspect-ratio:1}
+.qr svg{display:block;width:100%;height:100%}
+.joinurl{font-weight:700;font-size:clamp(1rem,2.4vmin,1.6rem);overflow-wrap:anywhere}
+.players{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:700;font-size:clamp(.95rem,2vmin,1.3rem)}
+.chip .dots{letter-spacing:2px;color:var(--coral)}
+.chip.ready{border-color:var(--good)}
+.chip .tick{color:var(--good)}
+.tv .fact{font-size:clamp(1.6rem,5.2vmin,3.6rem);padding:clamp(18px,3.5vmin,44px)}
+.tv .ask{font-size:clamp(2.2rem,6vmin,4.5rem)}
+.tv .opts{gap:clamp(10px,1.8vmin,22px)}
+.tv .opt{font-size:clamp(1.3rem,3.6vmin,2.6rem);min-height:clamp(70px,12vmin,140px);padding-left:clamp(44px,6vmin,80px)}
+.tv .opt::before{left:clamp(14px,2vmin,26px);font-size:1em}
+.tv .timer{height:clamp(8px,1.4vmin,16px)}
+.tv .qhead{font-size:clamp(1rem,2.6vmin,1.8rem);font-weight:700}
+.reveal-who{text-align:center}
+.reveal-who .script{font-size:clamp(2.6rem,8vmin,6.5rem)}
+.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.board li{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:700;font-size:clamp(1rem,2.4vmin,1.7rem)}
+.board .rk{width:1.8em;color:var(--coral);font-variant-numeric:tabular-nums}
+.board .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board .gain{color:var(--good);font-size:.8em;font-variant-numeric:tabular-nums}
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;gap:clamp(8px,2vmin,24px);max-width:900px;margin:0 auto;width:100%}
+.pod{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.pod .nm{font-weight:700;font-size:clamp(1.1rem,3vmin,2.2rem);overflow-wrap:anywhere}
+.pod .blk{width:100%;border-radius:12px 12px 0 0;display:grid;place-items:center;color:#fff;font-family:var(--script);font-size:clamp(2.4rem,7vmin,5rem)}
+.pod.p1 .blk{height:clamp(140px,26vmin,300px);background:var(--o1)}
+.pod.p2 .blk{height:clamp(100px,18vmin,210px);background:var(--o2)}
+.pod.p3 .blk{height:clamp(70px,12vmin,140px);background:var(--o3)}
+.hostbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.hostbar .grow{flex:1}
+select{font:inherit;border:2px solid var(--line);border-radius:10px;padding:8px;background:#fff;color:var(--teal)}
+@media (max-width:820px){.tv-grid{grid-template-columns:1fr}}
+@media (max-width:380px){.opts{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="snow" aria-hidden="true"></canvas>
+<div id="app"><div class="wrap"><p class="muted">Loading the game…</p></div></div>
+<div class="status" id="status" hidden></div>
+
+<script src="supabase.js"></script>
+<script src="qrcode.js"></script>
+<script>
+const SUPABASE_URL = 'https://rwlpcqdyrwatpspkqaau.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_845xXlvOeSXYYHaDRjVLEA_qnVl14cS';
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const txt = v => (v == null ? '' : String(v)).trim();
+const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const HOST = location.hash === '#host';
+const MAX_ENTRIES = 2, MAX_CHARS = 160;
+if (HOST) document.body.classList.add('tv');
+
+/* ---------- local identity ---------- */
+const ls = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+let PID = ls.get('wwt_pid');
+if (!PID) { PID = rid(); ls.set('wwt_pid', PID); }
+
+/* ---------- store: party_docs rows under wwt-*, plus party_photos ---------- */
+function makeStore() {
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const T = 'party_docs', P = 'wwt-';
+  const cache = new Map(), photos = new Map(), listeners = [];
+  let loaded = false, live = false, inflight = 0, lastWrite = 0, fails = 0;
+  const emit = () => { if (loaded) listeners.forEach(f => f()); };
+  async function refresh() {
+    if (inflight) return;
+    const t0 = Date.now();
+    const { data, error } = await sb.from(T).select('path,data').like('path', P + '%');
+    if (error) throw error;
+    if (inflight || lastWrite > t0) return;
+    let changed = !loaded; const seen = new Set();
+    for (const r of data) {
+      seen.add(r.path); const old = cache.get(r.path), now = r.data || {};
+      if (!old || JSON.stringify(old) !== JSON.stringify(now)) { cache.set(r.path, now); changed = true; }
+    }
+    for (const p of [...cache.keys()]) if (!seen.has(p)) { cache.delete(p); changed = true; }
+    loaded = true; fails = 0; setStatus('');
+    if (changed) emit();
+  }
+  const safe = () => refresh().catch(() => { if (++fails >= 2) setStatus("Can't reach the game. Check your connection; this page keeps trying.", true); });
+  function onChange(p) {
+    const row = p.eventType === 'DELETE' ? p.old : p.new;
+    if (!row || !row.path || !row.path.startsWith(P) || !loaded) return;
+    if (p.eventType === 'DELETE') cache.delete(row.path); else cache.set(row.path, row.data || {});
+    emit();
+  }
+  async function run(fn) {
+    inflight++; lastWrite = Date.now();
+    try { const { error } = await fn(); if (error) throw error; setStatus(''); }
+    catch (e) { setStatus("Couldn't save. Check your connection and try again.", true); throw e; }
+    finally { inflight--; lastWrite = Date.now(); }
+  }
+  function start() {
+    safe();
+    try {
+      sb.channel('wwt-' + rid()).on('postgres_changes', { event: '*', schema: 'public', table: T }, onChange)
+        .subscribe(st => { const was = live; live = st === 'SUBSCRIBED'; if (live && !was) safe(); });
+    } catch (e) { live = false; }
+    let n = 0;
+    setInterval(() => { n++; if (document.hidden && !HOST) return; if (!live || n % 4 === 0) safe(); }, 2000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) safe(); });
+  }
+  return {
+    start, onChange: f => listeners.push(f), get loaded() { return loaded; },
+    get: path => cache.get(path),
+    list: prefix => [...cache.entries()].filter(([p]) => p.startsWith(prefix)).map(([p, d]) => ({ ...d, id: p.slice(prefix.length) })),
+    set(path, data) { const d = { ...data }; cache.set(path, d); emit(); return run(() => sb.from(T).upsert({ path, data: d })); },
+    del(path) { cache.delete(path); emit(); return run(() => sb.from(T).delete().eq('path', path)); },
+    delPrefix(prefix) { for (const p of [...cache.keys()]) if (p.startsWith(prefix)) cache.delete(p); emit(); return run(() => sb.from(T).delete().like('path', prefix + '%')); },
+    async putPhoto(id, gid, data) { photos.set(id, data); await run(() => sb.from('party_photos').insert({ id, gid, data })); },
+    async getPhoto(id) {
+      if (photos.has(id)) return photos.get(id);
+      const { data, error } = await sb.from('party_photos').select('data').eq('id', id);
+      if (error || !data || !data.length) return null;
+      photos.set(id, data[0].data); return data[0].data;
+    },
+    delPhoto(id) { photos.delete(id); return run(() => sb.from('party_photos').delete().eq('id', id)); },
+    clearPhotosExcept(gid) { return run(() => sb.from('party_photos').delete().neq('gid', gid)); },
+  };
+}
+
+let statusT = 0;
+function setStatus(msg, bad) {
+  const el = $('#status'); clearTimeout(statusT);
+  if (!msg) { el.hidden = true; return; }
+  el.hidden = false; el.textContent = msg; el.classList.toggle('bad', !!bad);
+  if (!bad) statusT = setTimeout(() => { el.hidden = true; }, 2500);
+}
+
+const db = makeStore();
+
+/* ---------- derived game data ---------- */
+function game() {
+  const st = db.get('wwt-state/main') || null;
+  if (!st || !st.gid) return { st: null, players: [], entries: [], answers: [] };
+  const gid = st.gid;
+  const players = db.list('wwt-player/').filter(p => p.gid === gid && txt(p.name)).sort((a, b) => (a.t || 0) - (b.t || 0));
+  const entries = db.list('wwt-entry/').filter(e => e.gid === gid).sort((a, b) => (a.t || 0) - (b.t || 0));
+  const answers = db.list('wwt-answer/').filter(a => a.gid === gid);
+  return { st, gid, players, entries, answers };
+}
+const nameOf = (g, pid) => { const p = g.players.find(x => x.id === pid); return p ? txt(p.name) : 'Someone'; };
+function points(st, a, q) {
+  if (!q || a.choice !== q.a) return 0;
+  const lim = (st.limit || 20) * 1000;
+  return 500 + Math.round(500 * Math.max(0, 1 - (Number(a.ms) || lim) / lim));
+}
+function scores(g, uptoQi) {
+  const s = new Map(g.players.map(p => [p.id, 0]));
+  (g.st.qs || []).forEach((q, qi) => {
+    if (qi > uptoQi) return;
+    g.answers.filter(a => a.qi === qi).forEach(a => s.set(a.pid, (s.get(a.pid) || 0) + points(g.st, a, q)));
+  });
+  return g.players.map(p => ({ id: p.id, name: txt(p.name), score: s.get(p.id) || 0 })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+// the last question whose points count: during 'play' the current one is still open
+const scoredUpTo = st => st.phase === 'play' ? st.qi - 1 : st.qi;
+const rankOf = (board, pid) => { const i = board.findIndex(r => r.id === pid); return i < 0 ? null : i + 1; };
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+
+/* ---------- shared bits ---------- */
+async function fillPhoto(box, id) {
+  const img = h('img'); img.alt = 'Mystery photo';
+  const frame = h('div', 'photo-box'); frame.appendChild(img); box.appendChild(frame);
+  const data = await db.getPhoto(id);
+  if (data) img.src = data; else { frame.replaceWith(h('p', 'fact photo', 'The photo could not be loaded.')); }
+}
+function factView(entry) {
+  const box = h('div');
+  box.style.display = 'flex'; box.style.flexDirection = 'column';
+  if (entry && entry.kind === 'photo' && entry.photo) fillPhoto(box, entry.photo);
+  else box.appendChild(h('p', 'fact', entry ? txt(entry.text) : ''));
+  return box;
+}
+function optionGrid(g, q, { pick, picked, reveal, counts }) {
+  const grid = h('div', 'opts' + (reveal ? ' reveal' : picked ? ' locked' : ''));
+  q.o.forEach((pid, i) => {
+    const b = h('button', 'opt c' + i); b.type = 'button';
+    b.appendChild(h('span', '', nameOf(g, pid)));
+    if (counts) b.appendChild(h('span', 'n', String(counts[pid] || 0)));
+    if (reveal && pid === q.a) b.classList.add('right');
+    if (picked === pid) b.classList.add('picked');
+    if (!pick || picked || reveal) b.disabled = true;
+    else b.addEventListener('click', () => pick(pid));
+    grid.appendChild(b);
+  });
+  return grid;
+}
+function timerBar() { const t = h('div', 'timer'); t.appendChild(h('i')); return t; }
+
+/* ---------- screens: rebuild on key change, update in place otherwise ---------- */
+const app = $('#app');
+let screenKey = '', screen = null;
+function show(key, build) {
+  if (key === screenKey && screen) { if (screen.update) screen.update(); return; }
+  screenKey = key; const wrap = h('div', 'wrap'); app.textContent = ''; app.appendChild(wrap);
+  screen = build(wrap) || {}; if (screen.update) screen.update();
+}
+
+/* ================= PLAYER (phone) ================= */
+let qSeenAt = { key: '', t: 0 };
+function playerRender() {
+  const g = game(), st = g.st;
+  const me = st && g.players.find(p => p.id === PID);
+  if (!st || st.phase === 'off') return show('wait', w => {
+    w.appendChild(h('p', 'eyebrow', 'Christmas party game'));
+    w.appendChild(h('h1', '', 'Who Wrote This?'));
+    w.appendChild(h('p', 'lead', "No game running yet. When the host opens the TV screen, this page updates by itself."));
+  });
+  if (st.phase === 'done') return show('done-' + st.gid + (me ? '' : '-x'), w => {
+    w.appendChild(h('h1', '', 'That’s a wrap!'));
+    const board = scores(g, (st.qs || []).length - 1), r = rankOf(board, PID);
+    if (me && r) {
+      const c = h('div', 'card big-msg');
+      c.appendChild(h('p', 'script', 'You came ' + ordinal(r)));
+      c.appendChild(h('p', 'score', board[r - 1].score.toLocaleString() + ' points'));
+      w.appendChild(c);
+    }
+    w.appendChild(h('p', 'muted', 'Check the TV for the winners.'));
+  });
+  if (!me) return show('join-' + st.gid, w => joinScreen(w, g));
+  if (st.phase === 'lobby') return show('lobby-' + st.gid, w => lobbyScreen(w));
+  const q = (st.qs || [])[st.qi];
+  if (!q) return show('none', w => w.appendChild(h('p', 'lead', 'Waiting for the host…')));
+  if (st.phase === 'play') return show('q-' + st.gid + '-' + st.qi, w => questionScreen(w, q));
+  if (st.phase === 'reveal') return show('r-' + st.gid + '-' + st.qi, w => revealScreenPhone(w, q));
+}
+
+function joinScreen(w, g) {
+  w.appendChild(h('p', 'eyebrow', 'Christmas party game'));
+  w.appendChild(h('h1', '', 'Who Wrote This?'));
+  w.appendChild(h('p', 'lead', g.st.phase === 'lobby'
+    ? 'Add up to 2 facts or photos about yourself. They get shuffled, and everyone guesses who wrote each one.'
+    : 'The game has started, but you can still jump in and guess.'));
+  const c = h('form', 'card');
+  const lb = h('label', 'lbl', 'Your name'); lb.htmlFor = 'nm';
+  const inp = h('input'); inp.type = 'text'; inp.id = 'nm'; inp.maxLength = 24; inp.autocomplete = 'given-name'; inp.value = ls.get('wwt_name') || '';
+  const err = h('p', 'err'); err.hidden = true;
+  const b = h('button', 'btn', 'Join the game'); b.type = 'submit';
+  c.append(lb, inp, err, b); w.appendChild(c);
+  c.addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = txt(inp.value).replace(/\s+/g, ' ');
+    const gg = game();
+    if (!name) { err.hidden = false; err.textContent = 'Type your name first.'; return; }
+    if (gg.players.some(p => p.id !== PID && txt(p.name).toLowerCase() === name.toLowerCase())) { err.hidden = false; err.textContent = 'Someone already joined as ' + name + '. Add an initial so people can tell you apart.'; return; }
+    b.disabled = true; ls.set('wwt_name', name);
+    try { await db.set('wwt-player/' + PID, { gid: gg.gid, name, ready: false, t: Date.now() }); }
+    catch (e2) { b.disabled = false; err.hidden = false; err.textContent = "Couldn't join. Check your connection and try again."; }
+  });
+}
+
+function lobbyScreen(w) {
+  const head = h('div'); w.appendChild(head);
+  const listCard = h('div', 'card'); w.appendChild(listCard);
+  const form = h('div', 'card'); w.appendChild(form);
+  const foot = h('div', 'row'); w.appendChild(foot);
+  let mode = 'text', busy = false;
+
+  // add form (built once so typing survives updates)
+  const seg = h('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Fact or photo');
+  const bt = h('button', '', 'Write a fact'), bp = h('button', '', 'Add a photo');
+  bt.type = bp.type = 'button'; seg.append(bt, bp);
+  const ta = h('textarea'); ta.id = 'fact'; ta.maxLength = MAX_CHARS; ta.placeholder = 'e.g. I once got lost in IKEA for 2 hours';
+  ta.setAttribute('aria-label', 'Your fact');
+  const cnt = h('p', 'count', '0 / ' + MAX_CHARS);
+  const file = h('input'); file.type = 'file'; file.accept = 'image/*'; file.id = 'photo'; file.hidden = true;
+  const pickBtn = h('button', 'btn ghost', 'Choose a photo'); pickBtn.type = 'button';
+  const photoHint = h('p', 'muted', 'A baby or kid photo works great. It only shows during the game.');
+  const err = h('p', 'err'); err.hidden = true;
+  const save = h('button', 'btn', 'Add it'); save.type = 'button';
+  form.append(seg, ta, cnt, pickBtn, photoHint, file, err, save);
+  const setMode = m => {
+    mode = m; bt.setAttribute('aria-pressed', m === 'text'); bp.setAttribute('aria-pressed', m === 'photo');
+    ta.hidden = cnt.hidden = save.hidden = m !== 'text'; pickBtn.hidden = photoHint.hidden = m !== 'photo'; err.hidden = true;
+  };
+  bt.addEventListener('click', () => setMode('text')); bp.addEventListener('click', () => setMode('photo'));
+  ta.addEventListener('input', () => { cnt.textContent = ta.value.length + ' / ' + MAX_CHARS; });
+  setMode('text');
+  const fail = m => { err.hidden = false; err.textContent = m; };
+  save.addEventListener('click', async () => {
+    const g = game(), text = txt(ta.value);
+    if (!text) return fail('Write something first.');
+    if (myEntries(g).length >= MAX_ENTRIES) return fail('You already have 2. Remove one to add another.');
+    busy = true; save.disabled = true;
+    try { await db.set('wwt-entry/' + rid(), { gid: g.gid, pid: PID, kind: 'text', text, t: Date.now() }); ta.value = ''; cnt.textContent = '0 / ' + MAX_CHARS; err.hidden = true; }
+    catch (e) { fail("Couldn't save it. Try again."); }
+    busy = false; save.disabled = false; update();
+  });
+  pickBtn.addEventListener('click', () => file.click());
+  file.addEventListener('change', async () => {
+    const f = file.files && file.files[0]; file.value = '';
+    if (!f) return;
+    const g = game();
+    if (myEntries(g).length >= MAX_ENTRIES) return fail('You already have 2. Remove one to add another.');
+    busy = true; pickBtn.disabled = true; pickBtn.textContent = 'Uploading…';
+    try {
+      const data = await shrink(f);
+      const pid = rid();
+      await db.putPhoto(pid, g.gid, data);
+      await db.set('wwt-entry/' + rid(), { gid: g.gid, pid: PID, kind: 'photo', photo: pid, t: Date.now() });
+      err.hidden = true;
+    } catch (e) { fail("That photo couldn't be added. Try a different one."); }
+    busy = false; pickBtn.disabled = false; pickBtn.textContent = 'Choose a photo'; update();
+  });
+
+  function myEntries(g) { return g.entries.filter(e => e.pid === PID); }
+  function update() {
+    const g = game(), me = g.players.find(p => p.id === PID); if (!me) return;
+    const mine = myEntries(g);
+    head.textContent = '';
+    head.appendChild(h('p', 'eyebrow', 'Hi ' + txt(me.name)));
+    head.appendChild(h('h1', '', 'Who Wrote This?'));
+    head.appendChild(h('p', 'lead', 'Add up to 2 facts or photos about yourself. Nobody sees who wrote them until the reveal.'));
+    listCard.textContent = '';
+    listCard.appendChild(h('p', 'lbl', 'Yours (' + mine.length + ' of ' + MAX_ENTRIES + ')'));
+    if (!mine.length) listCard.appendChild(h('p', 'muted', 'Nothing yet. You can add 1 or 2.'));
+    mine.forEach((e, i) => {
+      const row = h('div', 'entry'); row.appendChild(h('span', 'slot-n', String(i + 1)));
+      if (e.kind === 'photo') { const im = h('img'); im.alt = 'Your photo'; db.getPhoto(e.photo).then(d => { if (d) im.src = d; }); row.appendChild(im); row.appendChild(h('span', 'txt', 'Photo')); }
+      else row.appendChild(h('span', 'txt', txt(e.text)));
+      const del = h('button', 'btn quiet', 'Remove'); del.type = 'button';
+      del.addEventListener('click', async () => { del.disabled = true; try { if (e.kind === 'photo' && e.photo) db.delPhoto(e.photo).catch(() => {}); await db.del('wwt-entry/' + e.id); } catch (x) { del.disabled = false; } });
+      row.appendChild(del); listCard.appendChild(row);
+    });
+    form.hidden = mine.length >= MAX_ENTRIES;
+    foot.textContent = '';
+    const ready = !!me.ready;
+    const rb = h('button', ready ? 'btn ghost' : 'btn', ready ? 'Not ready yet' : "I'm ready"); rb.type = 'button';
+    rb.disabled = !mine.length && !ready;
+    rb.addEventListener('click', () => { const { id, ...rest } = me; db.set('wwt-player/' + PID, { ...rest, ready: !ready }).catch(() => {}); });
+    foot.appendChild(rb);
+    foot.appendChild(h('p', 'muted', ready ? 'Waiting for the host to start…' : mine.length ? 'Tap when you’re done.' : 'Add at least 1 to get ready.'));
+  }
+  return { update };
+}
+
+async function shrink(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const max = 900, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    let q = 0.78, out = c.toDataURL('image/jpeg', q);
+    while (out.length > 180000 && q > 0.4) { q -= 0.12; out = c.toDataURL('image/jpeg', q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function questionScreen(w, q) {
+  const g0 = game(), st = g0.st, key = st.gid + '-' + st.qi;
+  if (qSeenAt.key !== key) qSeenAt = { key, t: Date.now() };
+  const lim = (st.limit || 20) * 1000;
+  const hd = h('div', 'qhead'); hd.appendChild(h('span', 'eyebrow', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length)); w.appendChild(hd);
+  const bar = timerBar(); w.appendChild(bar);
+  const entry = g0.entries.find(e => e.id === q.e);
+  w.appendChild(factView(entry));
+  const area = h('div'); w.appendChild(area);
+  const tick = setInterval(() => {
+    if (!document.contains(bar)) return clearInterval(tick);
+    const left = Math.max(0, 1 - (Date.now() - qSeenAt.t) / lim);
+    bar.firstChild.style.transform = 'scaleX(' + left + ')';
+  }, 250);
+  function update() {
+    const g = game(); area.textContent = '';
+    if (q.a === PID) {
+      const m = h('div', 'card big-msg'); m.appendChild(h('p', 'script', 'This one’s yours!')); m.appendChild(h('p', 'lead', 'Keep a straight face while everyone guesses.'));
+      area.appendChild(m); return;
+    }
+    const mine = g.answers.find(a => a.qi === st.qi && a.pid === PID);
+    area.appendChild(h('p', 'ask', 'Who wrote this?'));
+    area.appendChild(optionGrid(g, q, {
+      picked: mine && mine.choice,
+      pick: async pid => {
+        const ms = Date.now() - qSeenAt.t;
+        if (ms > lim + 1500) return;
+        try { await db.set('wwt-answer/' + st.gid + '_' + st.qi + '_' + PID, { gid: st.gid, qi: st.qi, pid: PID, choice: pid, ms }); } catch (e) {}
+      },
+    }));
+    if (mine) area.appendChild(h('p', 'muted', 'Locked in. Watch the TV for the answer.'));
+  }
+  return { update };
+}
+
+function revealScreenPhone(w, q) {
+  const g = game(), st = g.st;
+  w.appendChild(h('p', 'eyebrow', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length));
+  const m = h('div', 'card big-msg'); w.appendChild(m);
+  const author = nameOf(g, q.a);
+  if (q.a === PID) {
+    const guessers = g.answers.filter(a => a.qi === st.qi && a.pid !== PID);
+    const right = guessers.filter(a => a.choice === q.a).length;
+    m.appendChild(h('p', 'script', right === 0 && guessers.length ? 'Nobody guessed you!' : right + ' of ' + guessers.length + ' guessed you'));
+  } else {
+    const mine = g.answers.find(a => a.qi === st.qi && a.pid === PID);
+    if (mine && mine.choice === q.a) { m.appendChild(h('p', 'script', 'Correct!')); m.appendChild(h('p', 'score', '+' + points(st, mine, q))); }
+    else { m.appendChild(h('p', 'script', mine ? 'Not quite' : 'Too slow!')); m.appendChild(h('p', 'lead', 'It was ' + author + '.')); }
+  }
+  const board = scores(g, st.qi), r = rankOf(board, PID);
+  if (r) w.appendChild(h('p', 'lead', 'You’re ' + ordinal(r) + ' with ' + board[r - 1].score.toLocaleString() + ' points.'));
+}
+
+/* ================= HOST (TV) ================= */
+let revealing = false, armed = '';
+function hostRender() {
+  const g = game(), st = g.st;
+  if (!st || st.phase === 'off') return show('start', w => {
+    w.appendChild(h('p', 'eyebrow', 'TV screen'));
+    w.appendChild(h('h1', '', 'Who Wrote This?'));
+    w.appendChild(h('p', 'lead', 'Start a game, then everyone joins on their phone and adds up to 2 facts or photos about themselves.'));
+    const b = h('button', 'btn', 'Start a new game'); b.type = 'button'; b.style.alignSelf = 'flex-start';
+    b.addEventListener('click', () => newGame(b)); w.appendChild(b);
+  });
+  if (st.phase === 'lobby') return show('lobby-' + st.gid, w => hostLobby(w));
+  if (st.phase === 'done') return show('done-' + st.gid, w => hostDone(w));
+  const q = (st.qs || [])[st.qi]; if (!q) return;
+  if (st.phase === 'play') return show('q-' + st.gid + '-' + st.qi, w => hostQuestion(w, q));
+  if (st.phase === 'reveal') return show('r-' + st.gid + '-' + st.qi, w => hostReveal(w, q));
+}
+
+async function newGame(btn) {
+  if (btn) btn.disabled = true;
+  const gid = rid();
+  try {
+    await Promise.all([db.delPrefix('wwt-answer/'), db.delPrefix('wwt-entry/'), db.delPrefix('wwt-player/')]);
+    await db.clearPhotosExcept(gid).catch(() => {});
+    await db.set('wwt-state/main', { gid, phase: 'lobby', qi: 0, qs: [], limit: (db.get('wwt-state/main') || {}).limit || 20, at: Date.now() });
+  } catch (e) { if (btn) btn.disabled = false; }
+}
+
+function hostLobby(w) {
+  const joinUrl = location.origin + location.pathname;
+  const top = h('div', 'hostbar');
+  const title = h('div', 'grow'); title.appendChild(h('p', 'eyebrow', 'Join on your phone')); title.appendChild(h('h1', '', 'Who Wrote This?'));
+  top.appendChild(title); w.appendChild(top);
+  const grid = h('div', 'tv-grid'); w.appendChild(grid);
+  const left = h('div', 'card');
+  const qrBox = h('div', 'qr');
+  try { const qr = qrcode(0, 'M'); qr.addData(joinUrl); qr.make(); qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) {}
+  left.append(h('p', 'lbl', 'Scan to join, or open'), qrBox, h('p', 'joinurl', joinUrl.replace(/^https?:\/\//, '')));
+  left.appendChild(h('p', 'muted', 'Add up to 2 facts or photos about yourself. Everyone guesses who wrote each one.'));
+  grid.appendChild(left);
+  const right = h('div', 'card'); grid.appendChild(right);
+  const counts = h('p', 'lbl'), players = h('div', 'players');
+  right.append(counts, players);
+  const bar = h('div', 'hostbar'); w.appendChild(bar);
+  const limLbl = h('label', 'lbl', 'Seconds per question '); const lim = h('select'); lim.id = 'limit';
+  [15, 20, 30].forEach(s => { const o = h('option', '', String(s)); o.value = s; lim.appendChild(o); });
+  limLbl.appendChild(lim);
+  const startB = h('button', 'btn', 'Start the game'); startB.type = 'button';
+  const resetB = h('button', 'btn ghost small', 'Clear and start over'); resetB.type = 'button';
+  bar.append(h('span', 'grow'), limLbl, resetB, startB);
+  lim.addEventListener('change', () => { const st = game().st; db.set('wwt-state/main', { ...st, limit: Number(lim.value) }).catch(() => {}); });
+  resetB.addEventListener('click', () => {
+    if (armed !== 'reset') { armed = 'reset'; resetB.textContent = 'Tap again to clear everyone'; setTimeout(() => { if (armed === 'reset') { armed = ''; resetB.textContent = 'Clear and start over'; } }, 3500); return; }
+    armed = ''; newGame(resetB);
+  });
+  startB.addEventListener('click', () => startGame(startB));
+  function update() {
+    const g = game();
+    lim.value = String(g.st.limit || 20);
+    const nE = g.entries.length, nR = g.players.filter(p => p.ready).length;
+    counts.textContent = g.players.length + (g.players.length === 1 ? ' player' : ' players') + ' · ' + nE + (nE === 1 ? ' fact or photo' : ' facts and photos') + ' · ' + nR + ' ready';
+    players.textContent = '';
+    if (!g.players.length) players.appendChild(h('p', 'muted', 'Waiting for people to join…'));
+    g.players.forEach(p => {
+      const n = g.entries.filter(e => e.pid === p.id).length;
+      const c = h('span', 'chip' + (p.ready ? ' ready' : ''));
+      c.appendChild(h('span', '', txt(p.name)));
+      c.appendChild(h('span', 'dots', '●'.repeat(n) + '○'.repeat(Math.max(0, MAX_ENTRIES - n))));
+      if (p.ready) c.appendChild(h('span', 'tick', '✓'));
+      players.appendChild(c);
+    });
+    const authors = new Set(g.entries.map(e => e.pid));
+    startB.disabled = g.players.length < 2 || !g.entries.some(e => g.players.some(p => p.id === e.pid));
+    startB.title = startB.disabled ? 'Needs at least 2 players and 1 fact or photo' : '';
+  }
+  return { update };
+}
+
+async function startGame(btn) {
+  const g = game();
+  const ids = g.players.map(p => p.id);
+  let es = shuffle(g.entries.filter(e => ids.includes(e.pid)));
+  for (let i = 1; i < es.length; i++) if (es[i].pid === es[i - 1].pid) {
+    const j = es.findIndex((e, k) => k > i && e.pid !== es[i - 1].pid);
+    if (j > 0) [es[i], es[j]] = [es[j], es[i]];
+  }
+  const qs = es.map(e => ({ e: e.id, a: e.pid, o: shuffle([e.pid, ...shuffle(ids.filter(x => x !== e.pid)).slice(0, 3)]) }));
+  if (!qs.length) return;
+  btn.disabled = true;
+  try { await db.set('wwt-state/main', { ...g.st, phase: 'play', qi: 0, qs, at: Date.now() }); } catch (e) { btn.disabled = false; }
+}
+
+function hostQuestion(w, q) {
+  const g0 = game(), st = g0.st, lim = (st.limit || 20) * 1000, t0 = Date.now() - Math.min(Math.max(0, Date.now() - (st.at || Date.now())), lim);
+  revealing = false;
+  const hd = h('div', 'qhead'); const qn = h('span', '', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length); const ans = h('span');
+  hd.append(qn, ans); w.appendChild(hd);
+  const bar = timerBar(); w.appendChild(bar);
+  const entry = g0.entries.find(e => e.id === q.e);
+  w.appendChild(factView(entry));
+  w.appendChild(h('p', 'ask', 'Who wrote this?'));
+  w.appendChild(optionGrid(g0, q, {}));
+  const hb = h('div', 'hostbar'); const now = h('button', 'btn ghost small', 'Reveal now'); now.type = 'button';
+  hb.append(now); w.appendChild(hb);
+  now.addEventListener('click', () => reveal());
+  async function reveal() {
+    if (revealing) return; revealing = true;
+    const s = game().st; if (s.phase !== 'play') return;
+    try { await db.set('wwt-state/main', { ...s, phase: 'reveal', at: Date.now() }); } catch (e) { revealing = false; }
+  }
+  const tick = setInterval(() => {
+    if (!document.contains(bar)) return clearInterval(tick);
+    const el = Date.now() - t0; bar.firstChild.style.transform = 'scaleX(' + Math.max(0, 1 - el / lim) + ')';
+    if (el >= lim) reveal();
+  }, 250);
+  function update() {
+    const g = game();
+    const eligible = g.players.filter(p => p.id !== q.a);
+    const got = g.answers.filter(a => a.qi === st.qi && a.pid !== q.a);
+    ans.textContent = got.length + ' of ' + eligible.length + ' answered';
+    if (eligible.length && got.length >= eligible.length) setTimeout(reveal, 600);
+  }
+  return { update };
+}
+
+function hostReveal(w, q) {
+  const g = game(), st = g.st;
+  const hd = h('div', 'qhead'); hd.appendChild(h('span', '', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length)); w.appendChild(hd);
+  const grid = h('div', 'tv-grid'); w.appendChild(grid);
+  const leftC = h('div', 'rev'); leftC.style.display = 'flex'; leftC.style.flexDirection = 'column'; leftC.style.gap = '16px';
+  const entry = g.entries.find(e => e.id === q.e);
+  leftC.appendChild(factView(entry));
+  const who = h('div', 'reveal-who'); who.appendChild(h('p', 'eyebrow', 'Written by')); who.appendChild(h('p', 'script', nameOf(g, q.a)));
+  leftC.appendChild(who);
+  const counts = {}; g.answers.filter(a => a.qi === st.qi).forEach(a => { counts[a.choice] = (counts[a.choice] || 0) + 1; });
+  leftC.appendChild(optionGrid(g, q, { reveal: true, counts }));
+  grid.appendChild(leftC);
+  const right = h('div', 'card'); right.appendChild(h('p', 'lbl', 'Leaderboard'));
+  const board = scores(g, st.qi);
+  const gains = new Map(g.answers.filter(a => a.qi === st.qi).map(a => [a.pid, points(st, a, q)]));
+  const ol = h('ol', 'board');
+  board.slice(0, 6).forEach((r, i) => {
+    const li = h('li'); li.appendChild(h('span', 'rk', String(i + 1))); li.appendChild(h('span', 'nm', r.name));
+    if (gains.get(r.id)) li.appendChild(h('span', 'gain', '+' + gains.get(r.id)));
+    li.appendChild(h('span', 'score', r.score.toLocaleString())); ol.appendChild(li);
+  });
+  right.appendChild(ol); grid.appendChild(right);
+  const last = st.qi >= st.qs.length - 1;
+  const hb = h('div', 'hostbar'); const end = h('button', 'btn ghost small', 'End game'); end.type = 'button';
+  const next = h('button', 'btn', last ? 'See the winners' : 'Next question'); next.type = 'button';
+  hb.append(end, next); w.appendChild(hb);
+  next.addEventListener('click', () => advance(next));
+  end.addEventListener('click', () => {
+    if (armed !== 'end') { armed = 'end'; end.textContent = 'Tap again to end'; setTimeout(() => { if (armed === 'end') { armed = ''; end.textContent = 'End game'; } }, 3500); return; }
+    armed = ''; db.set('wwt-state/main', { ...game().st, phase: 'done', at: Date.now() }).catch(() => {});
+  });
+  next.focus({ preventScroll: true });
+}
+async function advance(btn) {
+  const st = game().st; if (st.phase !== 'reveal') return;
+  if (btn) btn.disabled = true;
+  const last = st.qi >= st.qs.length - 1;
+  try { await db.set('wwt-state/main', last ? { ...st, phase: 'done', at: Date.now() } : { ...st, phase: 'play', qi: st.qi + 1, at: Date.now() }); }
+  catch (e) { if (btn) btn.disabled = false; }
+}
+
+function hostDone(w) {
+  const g = game(), st = g.st;
+  w.appendChild(h('p', 'eyebrow', 'Final scores'));
+  w.appendChild(h('h1', '', 'And the winner is…'));
+  const board = scores(g, (st.qs || []).length - 1);
+  const pod = h('div', 'podium');
+  [1, 0, 2].forEach(i => {
+    const r = board[i]; const d = h('div', 'pod p' + (i + 1));
+    if (r) { d.appendChild(h('span', 'nm', r.name)); d.appendChild(h('span', 'score', r.score.toLocaleString())); }
+    const blk = h('div', 'blk', String(i + 1)); if (!r) blk.style.opacity = '.25';
+    d.appendChild(blk); pod.appendChild(d);
+  });
+  w.appendChild(pod);
+  if (board.length > 3) {
+    const ol = h('ol', 'board'); ol.start = 4;
+    board.slice(3).forEach((r, i) => { const li = h('li'); li.appendChild(h('span', 'rk', String(i + 4))); li.appendChild(h('span', 'nm', r.name)); li.appendChild(h('span', 'score', r.score.toLocaleString())); ol.appendChild(li); });
+    w.appendChild(ol);
+  }
+  const hb = h('div', 'hostbar'); const again = h('button', 'btn', 'Play again with new facts'); again.type = 'button';
+  again.addEventListener('click', () => {
+    if (armed !== 'again') { armed = 'again'; again.textContent = 'Tap again: this clears everyone’s facts'; setTimeout(() => { if (armed === 'again') { armed = ''; again.textContent = 'Play again with new facts'; } }, 3500); return; }
+    armed = ''; newGame(again);
+  });
+  hb.appendChild(again); w.appendChild(hb);
+}
+
+document.addEventListener('keydown', e => {
+  if (!HOST || e.target.matches('input,textarea,select')) return;
+  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+    const st = (game().st || {});
+    if (st.phase === 'reveal' && !e.target.matches('button')) { e.preventDefault(); advance(); }
+  }
+});
+
+/* ---------- snow ---------- */
+(function snow() {
+  const cv = $('#snow'), ctx = cv.getContext('2d'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, ht = 0; const fl = Array.from({ length: 50 }, () => ({ x: Math.random(), y: Math.random(), r: 1 + Math.random() * 2.4, v: 0.0006 + Math.random() * 0.0012, p: Math.random() * 6.3 }));
+  const size = () => { const r = Math.min(devicePixelRatio || 1, 2); w = innerWidth; ht = innerHeight; cv.width = w * r; cv.height = ht * r; ctx.setTransform(r, 0, 0, r, 0, 0); };
+  size(); addEventListener('resize', size);
+  const frame = () => {
+    ctx.clearRect(0, 0, w, ht); ctx.fillStyle = '#fff';
+    for (const f of fl) { if (!still) { f.y += f.v; f.p += 0.01; if (f.y > 1.02) { f.y = -0.02; f.x = Math.random(); } } ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.arc(f.x * w + Math.sin(f.p) * 8, f.y * ht, f.r, 0, 6.2832); ctx.fill(); }
+    if (!still) requestAnimationFrame(frame);
+  };
+  frame();
+})();
+
+/* ---------- go ---------- */
+const render = () => { try { (HOST ? hostRender : playerRender)(); } catch (e) { console.error(e); } };
+let rq = false; db.onChange(() => { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); });
+setTimeout(() => { if (!db.loaded) setStatus("Can't reach the game yet. Keep this page open; it keeps trying.", true); }, 10000);
+db.start();
+})();
+</script>
+</body>
+</html>
