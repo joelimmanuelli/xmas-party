@@ -94,7 +94,8 @@ textarea{resize:vertical;min-height:90px}
 
 /* TV */
 .tv-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vmin,40px);align-items:start}
-.qr{background:#fff;border-radius:16px;padding:12px;width:clamp(160px,31vmin,340px);aspect-ratio:1}
+.qr{background:var(--peach);width:clamp(200px,44vmin,470px);aspect-ratio:1}
+.joinbox{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .qr svg{display:block;width:100%;height:100%}
 .joinurl{font-weight:700;font-size:clamp(1rem,2.4vmin,1.6rem);overflow-wrap:anywhere}
 .players{display:flex;flex-wrap:wrap;gap:8px}
@@ -136,6 +137,8 @@ select{font:inherit;border:2px solid var(--line);border-radius:10px;padding:8px;
 /* scene: cottage + elves + ground (TV start, lobby, winners) */
 #cottage{position:fixed;right:5vw;bottom:9vh;width:clamp(130px,22vmin,260px);z-index:1;pointer-events:none;display:none}
 body[data-scene="full"] #cottage{display:block}
+body[data-screen="done"] #cottage{display:none!important}
+.pcol .nm{text-shadow:0 0 4px var(--peach),0 0 8px var(--peach),0 0 12px var(--peach)}
 body.tv[data-scene="full"] .wrap{padding-bottom:26vh}
 .smoke{animation:smoke 4s ease-out infinite;transform-box:fill-box;transform-origin:center}
 .smoke.s2{animation-delay:1.3s}.smoke.s3{animation-delay:2.6s}
@@ -185,20 +188,20 @@ body.tv[data-scene="full"] .wrap{padding-bottom:26vh}
 .done-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 .done-head h1{font-size:clamp(2.6rem,8vmin,6rem)}
 .also{display:flex;flex-wrap:wrap;gap:8px}
-.podium2{margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:clamp(8px,2vmin,26px);width:100%;max-width:1100px;align-self:center}
+.podium2{margin-top:auto;display:grid;align-items:end;gap:clamp(6px,1.4vmin,20px);width:100%;max-width:min(100%,calc(var(--n) * 240px));align-self:center}
 .pcol{display:flex;flex-direction:column;align-items:center}
 .pcol .who{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;animation:whoIn .7s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--dl) + .55s)}
 @keyframes whoIn{from{opacity:0;transform:translateY(30px) scale(.6)}to{opacity:1;transform:none}}
-.pcol .elfstand{width:clamp(56px,11vmin,120px);position:relative;z-index:1}
-.pcol.p1 .elfstand{width:clamp(66px,14vmin,150px)}
-.pcol .nm{font-family:var(--script);color:var(--coral);font-size:clamp(1.6rem,5vmin,3.6rem);line-height:1;text-align:center;overflow-wrap:anywhere;position:relative;z-index:1}
-.pcol .pts{font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(.95rem,2.2vmin,1.5rem);background:#fff;border-radius:999px;padding:2px 12px;border:1px solid var(--line);position:relative;z-index:1}
-.pcol .blk{width:100%;border-radius:14px 14px 0 0;display:grid;place-items:center;color:#fff;font-family:var(--script);font-size:clamp(2.4rem,8vmin,6rem);transform-origin:bottom;animation:rise .8s cubic-bezier(.2,1.2,.4,1) both;animation-delay:var(--dl);box-shadow:inset 0 -10px 0 rgba(0,0,0,.12);margin-top:6px}
+.pcol .elfstand{width:clamp(34px,var(--elf),120px);position:relative;z-index:1}
+.pcol.p1 .elfstand{width:clamp(56px,calc(var(--elf) * 1.35),160px)}
+.pcol .nm{font-family:var(--script);color:var(--coral);font-size:clamp(1rem,var(--nm),3.6rem);max-width:100%;line-height:1;text-align:center;overflow-wrap:anywhere;position:relative;z-index:1}
+.pcol .pts{font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(.75rem,calc(var(--nm) * .45),1.5rem);white-space:nowrap;background:#fff;border-radius:999px;padding:2px 12px;border:1px solid var(--line);position:relative;z-index:1}
+.pcol .blk{width:100%;border-radius:14px 14px 0 0;display:grid;place-items:center;color:#fff;font-family:var(--script);font-size:clamp(1.2rem,calc(var(--nm) * 1.5),6rem);transform-origin:bottom;animation:rise .8s cubic-bezier(.2,1.2,.4,1) both;animation-delay:var(--dl);box-shadow:inset 0 -10px 0 rgba(0,0,0,.12);margin-top:6px}
 @keyframes rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-.pcol.p1 .blk{height:clamp(120px,24vmin,280px);background:var(--o1)}
-.pcol.p2 .blk{height:clamp(84px,16vmin,190px);background:var(--o2)}
-.pcol.p3 .blk{height:clamp(56px,10vmin,120px);background:var(--o3)}
-.pcol.empty .blk{opacity:.25}
+.pcol.p1 .blk{height:clamp(130px,25vmin,290px);background:var(--o1)}
+.pcol.p1 .nm{font-size:clamp(1.4rem,calc(var(--nm) * 1.3),4.2rem)}
+.pcol.rest .blk{height:clamp(70px,12vmin,150px)}
+.pcol.c2 .blk{background:var(--o2)}.pcol.c0 .blk{background:var(--o3)}.pcol.c1 .blk{background:var(--o4)}
 .star{font-size:clamp(2rem,6vmin,4.4rem);color:#E2B452;line-height:1;animation:glow 1.4s ease-in-out infinite alternate;text-shadow:0 0 18px rgba(226,180,82,.8);position:relative;z-index:1}
 @keyframes glow{from{transform:scale(.9) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
 .rays{position:absolute;left:50%;top:40%;width:clamp(220px,46vmin,520px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.75) 0 10deg,rgba(255,255,255,0) 10deg 20deg);-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%);animation:spin 14s linear infinite;z-index:0}
@@ -407,37 +410,41 @@ const Sound = (() => {
   let on = ls.get('wwt_music') !== 'off';
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   const THEMES = {
-    // Jingle Bells chorus (1857), C major, 4/4
-    lobby: { bpm: 168, bar: 4, bass: [48, 48, 48, 48, 53, 48, 43, 43, 48, 48, 48, 48, 53, 48, 43, 48, 0], notes: [[64,1],[64,1],[64,2],[64,1],[64,1],[64,2],[64,1],[67,1],[60,1.5],[62,.5],[64,4],[65,1],[65,1],[65,1.5],[65,.5],[65,1],[64,1],[64,1],[64,.5],[64,.5],[64,1],[62,1],[62,1],[64,1],[62,2],[67,2],[64,1],[64,1],[64,2],[64,1],[64,1],[64,2],[64,1],[67,1],[60,1.5],[62,.5],[64,4],[65,1],[65,1],[65,1.5],[65,.5],[65,1],[64,1],[64,1],[64,.5],[64,.5],[67,1],[67,1],[65,1],[62,1],[60,4],[0,4]] },
-    // We Wish You a Merry Christmas (traditional), G major, 3/4
-    done: { bpm: 150, bar: 3, lead: 1, bass: [0, 43, 48, 50, 50, 52, 48, 50, 43, 0], notes: [[62,1],[67,1],[67,.5],[69,.5],[67,.5],[66,.5],[64,1],[64,1],[64,1],[69,1],[69,.5],[71,.5],[69,.5],[67,.5],[66,1],[62,1],[62,1],[71,1],[71,.5],[72,.5],[71,.5],[69,.5],[67,1],[64,1],[62,.5],[62,.5],[64,1],[69,1],[66,1],[67,3],[0,2]] },
+    // Silent Night (Gruber, 1818), C major, 6/8 felt in 3, music-box style
+    lobby: { bpm: 84, bar: 3, bass: [48,48,48,48,43,43,48,48,41,41,48,48,41,41,48,48,43,43,48,48,48,43,48,48,0], notes: [[67,1.5],[69,.5],[67,1],[64,3],[67,1.5],[69,.5],[67,1],[64,3],[74,2],[74,1],[71,3],[72,2],[72,1],[67,3],[69,2],[69,1],[72,1.5],[71,.5],[69,1],[67,1.5],[69,.5],[67,1],[64,3],[69,2],[69,1],[72,1.5],[71,.5],[69,1],[67,1.5],[69,.5],[67,1],[64,3],[74,2],[74,1],[77,1.5],[74,.5],[71,1],[72,3],[76,3],[72,1],[67,1],[64,1],[67,1.5],[65,.5],[62,1],[60,6],[0,3]] },
+    // We Wish You a Merry Christmas (traditional), G major, 3/4, slow and soft
+    done: { bpm: 112, bar: 3, lead: 1, bass: [0, 43, 48, 50, 50, 52, 48, 50, 43, 0], notes: [[62,1],[67,1],[67,.5],[69,.5],[67,.5],[66,.5],[64,1],[64,1],[64,1],[69,1],[69,.5],[71,.5],[69,.5],[67,.5],[66,1],[62,1],[62,1],[71,1],[71,.5],[72,.5],[71,.5],[69,.5],[67,1],[64,1],[62,.5],[62,.5],[64,1],[69,1],[66,1],[67,3],[0,3]] },
   };
   function ensure() {
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
       try { ctx = new AC(); } catch (e) { return null; }
       master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
-      music = ctx.createGain(); music.gain.value = 0.16; music.connect(master);
-      sfx = ctx.createGain(); sfx.gain.value = 0.45; sfx.connect(master);
+      music = ctx.createGain(); music.gain.value = 0.14; music.connect(master);
+      sfx = ctx.createGain(); sfx.gain.value = 0.35; sfx.connect(master);
     }
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     return ctx;
   }
   function bell(t, m, dur, out, vol = 1) {
     if (!m) return;
-    [[1, 1, 'sine'], [2, .35, 'sine'], [3.01, .12, 'triangle']].forEach(([mul, v, type]) => {
+    const ring = Math.min(3, Math.max(0.6, dur * 1.8));
+    [[1, 1, 'sine'], [2, .22, 'sine'], [4.01, .05, 'sine']].forEach(([mul, v, type]) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.value = hz(m) * mul;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * vol, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.25, dur * 1.4));
-      o.connect(g); g.connect(out); o.start(t); o.stop(t + Math.max(0.3, dur * 1.5));
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + ring);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + ring + 0.05);
     });
   }
   function bass(t, m, dur) {
     if (!m) return;
-    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = hz(m);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(music); o.start(t); o.stop(t + dur + 0.05);
+    [[1, .32], [2, .08]].forEach(([mul, v]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = hz(m) * mul;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.35);
+      g.gain.setValueAtTime(v, t + Math.max(0.4, dur - 0.5)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.4);
+      o.connect(g); g.connect(music); o.start(t); o.stop(t + dur + 0.5);
+    });
   }
   let noiseBuf = null;
   function noise(t, dur, freq, vol, out) {
@@ -454,8 +461,7 @@ const Sound = (() => {
       const [m, b] = th.notes[idx];
       const pos = beat - (th.lead || 0);
       if (pos >= 0 && Math.abs(pos % th.bar) < 1e-6) bass(nextT, th.bass[(Math.round(pos / th.bar) % th.bass.length)] || 0, spb * th.bar * 0.9);
-      bell(nextT, m, b * spb, music, 0.9);
-      for (let k = 0; k < b; k += 1) if (Number.isInteger(beat + k)) noise(nextT + k * spb, 0.07, 7500, 0.12, music);
+      bell(nextT, m, b * spb, music, 0.75);
       nextT += b * spb; beat += b; idx++;
       if (idx >= th.notes.length) { idx = 0; beat = 0; }
     }
@@ -475,11 +481,11 @@ const Sound = (() => {
     showButton(v) { btn.hidden = !v; },
     unlock() { if (!on) return; const fresh = !ctx || ctx.state !== 'running'; if (ensure() && fresh && want && !theme) startTheme(); },
     theme(name) { if (want === name) { if (name && !theme && ctx && ctx.state === 'running') startTheme(); return; } want = name; if (ctx && ctx.state === 'running') startTheme(); else if (!name) { clearInterval(timer); timer = 0; theme = null; } },
-    join: () => fx(t => { noise(t, 0.12, 8000, 0.5, sfx); noise(t + 0.09, 0.12, 9000, 0.4, sfx); bell(t + 0.05, 79, 0.25, sfx, 0.6); bell(t + 0.18, 84, 0.4, sfx, 0.6); }),
-    tick: urgent => fx(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = urgent ? 1320 : 990; g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); o.connect(g); g.connect(sfx); o.start(t); o.stop(t + 0.06); }),
+    join: () => fx(t => { bell(t, 79, 0.4, sfx, 0.5); bell(t + 0.14, 84, 0.6, sfx, 0.45); }),
+    tick: urgent => fx(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = urgent ? 1046 : 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(urgent ? 0.3 : 0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.connect(g); g.connect(sfx); o.start(t); o.stop(t + 0.2); }),
     reveal: () => fx(t => { [72, 76, 79, 84].forEach((m, i) => bell(t + i * 0.09, m, 0.5, sfx, 0.7)); }),
-    question: () => fx(t => { noise(t, 0.25, 6000, 0.25, sfx); bell(t, 67, 0.3, sfx, 0.5); bell(t + 0.12, 74, 0.4, sfx, 0.5); }),
-    drumroll: secs => fx(t => { for (let x = 0; x < secs; x += 0.045) noise(t + x, 0.05, 220, 0.18 + 0.5 * (x / secs), sfx); }),
+    question: () => fx(t => { bell(t, 67, 0.4, sfx, 0.4); bell(t + 0.15, 74, 0.6, sfx, 0.4); }),
+    drumroll: secs => fx(t => { for (let x = 0; x < secs; x += 0.05) noise(t + x, 0.06, 180, 0.08 + 0.32 * (x / secs), sfx); }),
     fanfare: () => fx(t => { [[72, 0], [76, .15], [79, .3], [84, .45], [79, .75], [84, .9]].forEach(([m, d]) => bell(t + d, m, d >= .9 ? 1.4 : .4, sfx, 0.9)); [48, 55, 60].forEach(m => bass(t + .9, m, 1.6)); }),
   };
 })();
@@ -848,6 +854,7 @@ function hostRender() {
   const g = game(), st = g.st;
   Sound.showButton(true);
   const phase = !st || st.phase === 'off' ? 'start' : st.phase;
+  document.body.dataset.screen = phase;
   setScene(phase === 'start' || phase === 'lobby' || phase === 'done' ? 'full' : 'none');
   if (phase !== 'done') Confetti.rain(false);
   if (phase === 'start') {
@@ -893,11 +900,13 @@ function hostLobby(w) {
   const title = h('div', 'grow'); title.appendChild(h('p', 'eyebrow', 'Join on your phone')); title.appendChild(h('h1', '', 'Who Wrote This?'));
   top.appendChild(title); w.appendChild(top);
   const grid = h('div', 'tv-grid'); w.appendChild(grid);
-  const left = h('div', 'card');
-  const qrBox = h('div', 'qr');
-  try { const qr = qrcode(0, 'M'); qr.addData(joinUrl); qr.make(); qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) {}
-  left.append(h('p', 'lbl', 'Scan to join, or open'), qrBox, h('p', 'joinurl', joinUrl.replace(/^https?:\/\//, '')));
-  left.appendChild(h('p', 'muted', 'Add up to 2 facts or photos about yourself. Everyone guesses who wrote each one.'));
+  const left = h('div', 'joinbox');
+  const qrBox = h('div', 'qr'); qrBox.setAttribute('role', 'img'); qrBox.setAttribute('aria-label', 'QR code to join the game');
+  try {
+    const qr = qrcode(0, 'M'); qr.addData(joinUrl); qr.make();
+    qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }).replace(/<rect[^>]*fill="white"[^>]*\/?>/g, '').replace(/fill="black"/g, 'fill="#1F3A36"');
+  } catch (e) {}
+  left.append(qrBox, h('p', 'joinurl', joinUrl.replace(/^https?:\/\//, '')));
   grid.appendChild(left);
   const right = h('div', 'card'); grid.appendChild(right);
   const counts = h('p', 'lbl'), players = h('div', 'players');
@@ -1039,31 +1048,35 @@ function hostDone(w) {
   const tt = h('div'); tt.append(h('p', 'eyebrow', 'Final scores'), h('h1', '', 'And the winner is…'));
   const again = h('button', 'btn', 'Play again with new facts'); again.type = 'button';
   head.append(tt, again); w.appendChild(head);
-  if (board.length > 3) {
-    const also = h('div', 'also');
-    board.slice(3).forEach((r, i) => { const c = h('span', 'chip'); c.append(h('span', 'rk', ordinal(i + 4)), h('span', '', r.name), h('span', 'score', r.score.toLocaleString())); also.appendChild(c); });
-    w.appendChild(also);
-  }
-  const DL = { 3: 0.5, 2: 1.7, 1: 3.1 };
+  // 1st in the middle; 2nd, 3rd, 4th… spread out to both sides on one level
+  const left = [], right = [];
+  board.slice(1).forEach((r, i) => (i % 2 === 0 ? left : right).push(i + 1));
+  const seq = board.length ? [...left.reverse(), 0, ...right] : [];
+  const n = Math.max(1, seq.length);
   const pod = h('div', 'podium2');
-  [2, 1, 3].forEach(place => {
-    const r = board[place - 1]; const col = h('div', 'pcol p' + place + (r ? '' : ' empty')); col.style.setProperty('--dl', DL[place] + 's');
+  pod.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, 1fr))';
+  pod.style.setProperty('--n', n);
+  pod.style.setProperty('--nm', n <= 3 ? '5vmin' : n <= 6 ? '3.6vmin' : n <= 10 ? '2.8vmin' : '2.2vmin');
+  pod.style.setProperty('--elf', n <= 3 ? '11vmin' : n <= 6 ? '9vmin' : n <= 10 ? '7vmin' : '5.5vmin');
+  const FIRST = 3.0;
+  seq.forEach((ri, k) => {
+    const r = board[ri], place = ri + 1, first = place === 1;
+    const col = h('div', 'pcol ' + (first ? 'p1' : 'rest c' + (place % 3)));
+    col.style.setProperty('--dl', (first ? FIRST : 0.4 + Math.min(1.6, (place - 2) * 0.18)) + 's');
     const who = h('div', 'who');
-    if (r) {
-      if (place === 1) { who.appendChild(h('div', 'rays')); who.appendChild(h('div', 'star', '★')); }
-      const e = h('div', 'elfstand ' + (place === 1 ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id); who.appendChild(e);
-      who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + ' pts'));
-    }
-    const blk = h('div', 'blk', ordinal(place));
-    col.append(who, blk); pod.appendChild(col);
+    if (first) { who.appendChild(h('div', 'rays')); who.appendChild(h('div', 'star', '★')); }
+    const e = h('div', 'elfstand ' + (first ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id); who.appendChild(e);
+    who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + ' pts'));
+    col.append(who, h('div', 'blk', ordinal(place))); pod.appendChild(col);
   });
+  if (!board.length) w.appendChild(h('p', 'lead', 'Nobody played this round.'));
   w.appendChild(pod);
   again.addEventListener('click', () => {
     if (armed !== 'again') { armed = 'again'; again.textContent = 'Tap again: this clears everyone’s facts'; setTimeout(() => { if (armed === 'again') { armed = ''; again.textContent = 'Play again with new facts'; } }, 3500); return; }
     armed = ''; Confetti.rain(false); newGame(again);
   });
-  Sound.theme(null); Sound.drumroll(3.1);
-  const t = setTimeout(() => { if (!document.contains(pod)) return; Sound.fanfare(); Confetti.burst(220); Confetti.rain(true); setTimeout(() => { if (document.contains(pod)) Sound.theme('done'); }, 2200); }, 3400);
+  Sound.theme(null); Sound.drumroll(FIRST);
+  setTimeout(() => { if (!document.contains(pod)) return; Sound.fanfare(); Confetti.burst(220); Confetti.rain(true); setTimeout(() => { if (document.contains(pod)) Sound.theme('done'); }, 2400); }, (FIRST + 0.3) * 1000);
 }
 
 document.addEventListener('keydown', e => {
