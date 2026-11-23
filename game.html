@@ -191,7 +191,7 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .done-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 .done-head h1{font-size:clamp(2.6rem,8vmin,6rem)}
 .also{display:flex;flex-wrap:wrap;gap:8px}
-.podium2{margin-top:auto;display:grid;align-items:end;gap:clamp(6px,1.4vmin,20px);width:100%;max-width:min(100%,calc(var(--n) * 240px));align-self:center}
+.podium2{margin-top:auto;display:grid;align-items:end;gap:clamp(6px,1.4vmin,20px);width:100%;max-width:min(80%,calc(var(--n) * 200px));align-self:center}
 .pcol{display:flex;flex-direction:column;align-items:center}
 .pcol .who{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;animation:whoIn .7s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--dl) + .55s)}
 @keyframes whoIn{from{opacity:0;transform:translateY(30px) scale(.6)}to{opacity:1;transform:none}}
@@ -201,9 +201,9 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .pcol .pts{font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(.75rem,calc(var(--nm) * .45),1.5rem);white-space:nowrap;background:#fff;border-radius:999px;padding:2px 12px;border:1px solid var(--line);position:relative;z-index:1}
 .pcol .blk{width:100%;border-radius:14px 14px 0 0;display:grid;place-items:center;color:#fff;font-family:var(--script);font-size:clamp(1.2rem,calc(var(--nm) * 1.5),6rem);transform-origin:bottom;animation:rise .8s cubic-bezier(.2,1.2,.4,1) both;animation-delay:var(--dl);box-shadow:inset 0 -10px 0 rgba(0,0,0,.12);margin-top:6px}
 @keyframes rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-.pcol.p1 .blk{height:clamp(130px,25vmin,290px);background:var(--o1)}
+.pcol.p1 .blk{height:clamp(100px,19vmin,230px);background:var(--o1)}
 .pcol.p1 .nm{font-size:clamp(1.4rem,calc(var(--nm) * 1.3),4.2rem)}
-.pcol.rest .blk{height:clamp(70px,12vmin,150px)}
+.pcol.rest .blk{height:clamp(44px,7vmin,96px)}
 .pcol.c2 .blk{background:var(--o2)}.pcol.c0 .blk{background:var(--o3)}.pcol.c1 .blk{background:var(--o4)}
 .star{font-size:clamp(2rem,6vmin,4.4rem);color:#E2B452;line-height:1;animation:glow 1.4s ease-in-out infinite alternate;text-shadow:0 0 18px rgba(226,180,82,.8);position:relative;z-index:1}
 @keyframes glow{from{transform:scale(.9) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
@@ -1099,7 +1099,7 @@ document.addEventListener('keydown', e => {
     const r = Math.min(devicePixelRatio || 1, 2); w = innerWidth; ht = innerHeight; cv.width = w * r; cv.height = ht * r; ctx.setTransform(r, 0, 0, r, 0, 0);
     let x = 7; const rnd = () => (x = (x * 48271) % 2147483647) / 2147483647;
     const n = Math.max(6, Math.round(w / 150)); trees = [];
-    for (let i = 0; i < n; i++) trees.push({ x: (i + 0.5) / n * w + (rnd() - 0.5) * (w / n) * 0.7, s: 0.55 + rnd() * 0.8, far: i % 3 === 1 });
+    for (let i = 0; i < n; i++) trees.push({ x: (i + 0.5) / n * w + (rnd() - 0.5) * (w / n) * 0.7, s: 0.65 + rnd() * 0.6, far: i % 3 === 1 });
   };
   const tree = (x, base, hs, dark) => {
     ctx.fillStyle = dark ? '#2E4F4B' : '#5F8A84';
@@ -1110,8 +1110,8 @@ document.addEventListener('keydown', e => {
   };
   const ground = () => {
     const g = ht * 0.94, unit = Math.min(w, ht);
-    trees.filter(t => t.far).forEach(t => tree(t.x, g - 2, unit * 0.12 * t.s, false));
-    trees.filter(t => !t.far).forEach(t => tree(t.x, g + 4, unit * 0.17 * t.s, true));
+    trees.filter(t => t.far).forEach(t => tree(t.x, g - 2, unit * 0.2 * t.s, false));
+    trees.filter(t => !t.far).forEach(t => tree(t.x, g + 4, unit * 0.28 * t.s, true));
     ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(0, g + 10);
     for (let x = 0; x <= w + 20; x += 20) ctx.lineTo(x, g + 8 + Math.sin(x / 160) * 6 + Math.cos(x / 53) * 3);
     ctx.lineTo(w, ht); ctx.lineTo(0, ht); ctx.closePath(); ctx.fill();
