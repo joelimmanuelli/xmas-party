@@ -138,11 +138,11 @@ select{font:inherit;border:2px solid var(--line);border-radius:10px;padding:8px;
 .wrap{padding-top:58px}
 .tv .wrap{padding-top:clamp(56px,8vmin,80px)}
 /* scene: cottage + elves + ground (TV start, lobby, winners) */
-#cottage{position:fixed;right:5vw;bottom:9vh;width:clamp(130px,22vmin,260px);z-index:1;pointer-events:none;display:none}
+#cottage{position:fixed;right:5vw;bottom:3.5vh;width:clamp(130px,22vmin,260px);z-index:1;pointer-events:none;display:none}
 body[data-scene="full"] #cottage{display:block}
 body[data-screen="done"] #cottage{display:none!important}
 .pcol .nm{text-shadow:0 0 4px var(--peach),0 0 8px var(--peach),0 0 12px var(--peach)}
-body.tv[data-scene="full"] .wrap{padding-bottom:26vh}
+body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .smoke{animation:smoke 4s ease-out infinite;transform-box:fill-box;transform-origin:center}
 .smoke.s2{animation-delay:1.3s}.smoke.s3{animation-delay:2.6s}
 @keyframes smoke{0%{transform:translate(0,0) scale(.6);opacity:0}20%{opacity:.8}100%{transform:translate(-14px,-46px) scale(1.6);opacity:0}}
@@ -209,7 +209,7 @@ body.tv[data-scene="full"] .wrap{padding-bottom:26vh}
 @keyframes glow{from{transform:scale(.9) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
 .rays{position:absolute;left:50%;top:40%;width:clamp(220px,46vmin,520px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.75) 0 10deg,rgba(255,255,255,0) 10deg 20deg);-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%);animation:spin 14s linear infinite;z-index:0}
 @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-body.tv[data-scene="full"] .wrap.done-wrap{padding-bottom:11vh}
+body.tv[data-scene="full"] .wrap.done-wrap{padding-bottom:5vh}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:7}
 /* cropper */
 .cropper{display:flex;flex-direction:column;gap:10px}
@@ -547,7 +547,7 @@ function syncElves(list, { sound = false } = {}) {
       const speed = 45 + (n % 40), d = (2 * Math.max(200, b - a) / speed).toFixed(1);
       el = h('div', 'elf'); el.style.setProperty('--w', w + 'px'); el.style.setProperty('--a', a + 'px'); el.style.setProperty('--b', b + 'px');
       el.style.setProperty('--d', d + 's'); el.style.setProperty('--dl', (-(n % 1000) / 1000 * d).toFixed(1) + 's');
-      const y = 1 + ((n >>> 9) % 70) / 10; el.style.setProperty('--y', y + 'vh'); el.style.zIndex = String(100 - Math.round(y * 10));
+      const y = 0.6 + ((n >>> 9) % 40) / 10; el.style.setProperty('--y', y + 'vh'); el.style.zIndex = String(100 - Math.round(y * 10));
       const pop = h('div', 'pop'); const tag = h('span', 'tag'); const flip = h('div', 'flip'); flip.innerHTML = elfSVG(x.seed || x.id);
       pop.append(tag, flip); el.appendChild(pop); elfLayer.appendChild(el); elfMap.set(x.id, el);
       if (sound) { el.classList.add('new'); Sound.join(); setTimeout(() => el.classList.remove('new'), 800); }
@@ -1109,7 +1109,7 @@ document.addEventListener('keydown', e => {
     ctx.fillStyle = '#7A4A3A'; ctx.fillRect(x - hs * 0.04, base, hs * 0.08, hs * 0.12);
   };
   const ground = () => {
-    const g = ht * 0.88, unit = Math.min(w, ht);
+    const g = ht * 0.94, unit = Math.min(w, ht);
     trees.filter(t => t.far).forEach(t => tree(t.x, g - 2, unit * 0.12 * t.s, false));
     trees.filter(t => !t.far).forEach(t => tree(t.x, g + 4, unit * 0.17 * t.s, true));
     ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(0, g + 10);
