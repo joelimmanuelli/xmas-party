@@ -95,7 +95,10 @@ textarea{resize:vertical;min-height:90px}
 /* TV */
 .tv-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vmin,40px);align-items:start}
 .qr{background:var(--peach);width:clamp(200px,44vmin,470px);aspect-ratio:1}
-.joinbox{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.joinbox{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+.lobby-head{text-align:center}
+.lobby-head h1{display:inline-block}
+.lobby-grid{align-items:center;max-width:1300px;width:100%;margin:0 auto}
 .qr svg{display:block;width:100%;height:100%}
 .joinurl{font-weight:700;font-size:clamp(1rem,2.4vmin,1.6rem);overflow-wrap:anywhere}
 .players{display:flex;flex-wrap:wrap;gap:8px}
@@ -896,10 +899,10 @@ async function newGame(btn) {
 
 function hostLobby(w) {
   const joinUrl = location.origin + location.pathname;
-  const top = h('div', 'hostbar');
-  const title = h('div', 'grow'); title.appendChild(h('p', 'eyebrow', 'Join on your phone')); title.appendChild(h('h1', '', 'Who Wrote This?'));
+  const top = h('div', 'lobby-head');
+  const title = h('div'); title.appendChild(h('p', 'eyebrow', 'Join on your phone')); title.appendChild(h('h1', '', 'Who Wrote This?'));
   top.appendChild(title); w.appendChild(top);
-  const grid = h('div', 'tv-grid'); w.appendChild(grid);
+  const grid = h('div', 'tv-grid lobby-grid'); w.appendChild(grid);
   const left = h('div', 'joinbox');
   const qrBox = h('div', 'qr'); qrBox.setAttribute('role', 'img'); qrBox.setAttribute('aria-label', 'QR code to join the game');
   try {
@@ -1067,7 +1070,7 @@ function hostDone(w) {
     if (first) { who.appendChild(h('div', 'rays')); who.appendChild(h('div', 'star', '★')); }
     const e = h('div', 'elfstand ' + (first ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id); who.appendChild(e);
     who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + ' pts'));
-    col.append(who, h('div', 'blk', ordinal(place))); pod.appendChild(col);
+    col.append(who, h('div', 'blk', first ? '1st' : '')); pod.appendChild(col);
   });
   if (!board.length) w.appendChild(h('p', 'lead', 'Nobody played this round.'));
   w.appendChild(pod);
