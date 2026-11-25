@@ -70,9 +70,9 @@ textarea{resize:vertical;min-height:90px}
 .fact::before{content:"\201C"}.fact::after{content:"\201D"}
 .fact.photo::before,.fact.photo::after{content:none}
 .photo-box{background:#fff;border:6px solid #fff;border-bottom-width:28px;border-radius:6px;box-shadow:0 6px 20px rgba(80,40,20,.18);align-self:center;transform:rotate(-2deg);max-width:100%}
-.photo-box img{display:block;max-width:100%;max-height:38vh;object-fit:contain}
-.tv .photo-box img{max-height:40vh}
-.tv .rev .photo-box img{max-height:30vh}
+.photo-box img{display:block;max-width:100%;height:34vh;width:auto;min-width:24vh;object-fit:contain;background:#F3E3DA}
+.tv .photo-box img{height:40vh;min-width:30vh}
+.tv .rev .photo-box img{height:30vh;min-width:22vh}
 .tv .rev .fact{font-size:clamp(1.2rem,3.4vmin,2.4rem)}
 .ask{text-align:center;font-family:var(--script);font-size:2rem;color:var(--coral);line-height:1}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -233,7 +233,7 @@ input[type="range"]{width:100%;accent-color:var(--coral)}
 .entry .sub{display:block;font-size:.85rem;color:var(--muted)}
 @media (max-width:820px){.tv-grid{grid-template-columns:1fr}.steps3{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){.elf,.elf .flip,.elf-svg,.elf-svg *,.bulb,.rays,.star,.smoke{animation:none!important}}
-@media (max-width:380px){.opts{grid-template-columns:1fr}}
+@media (max-width:380px){.opt{font-size:1rem;padding:12px 8px 12px 32px;min-height:64px}.opt::before{left:10px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -283,67 +283,177 @@ const ls = {
 let PID = ls.get('wwt_pid');
 if (!PID) { PID = rid(); ls.set('wwt_pid', PID); }
 
-/* ---------- store: party_docs rows under wwt-*, plus party_photos ---------- */
+/* ---------- store ----------
+   One state row (wwt-state/main) names the current game id (gid). Everything else for a game lives under
+   wwt-<gid>-player/…, wwt-<gid>-entry/…, wwt-<gid>-answer/…, so starting a new game never deletes rows.
+   The TV listens to every change; phones only listen to the state row and fetch the rest when it changes,
+   which keeps realtime traffic low with a full room. Photos live in party_photos and are fetched on demand. */
+const STATE = 'wwt-state/main';
 function makeStore() {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  const T = 'party_docs', P = 'wwt-';
-  const cache = new Map(), photos = new Map(), listeners = [];
-  let loaded = false, live = false, inflight = 0, lastWrite = 0, fails = 0;
+  const T = 'party_docs';
+  const cache = new Map(), photos = new Map(), listeners = [], touched = new Map();
+  let loaded = false, live = false, fails = 0, busy = false, again = false, pending = 0;
+  const gidNow = () => { const st = cache.get(STATE); return st && st.gid ? String(st.gid) : ''; };
+  const mine = path => path === STATE || (gidNow() && path.startsWith('wwt-' + gidNow() + '-'));
   const emit = () => { if (loaded) listeners.forEach(f => f()); };
-  async function refresh() {
-    if (inflight) return;
-    const t0 = Date.now();
-    const { data, error } = await sb.from(T).select('path,data').like('path', P + '%');
-    if (error) throw error;
-    if (inflight || lastWrite > t0) return;
-    let changed = !loaded; const seen = new Set();
-    for (const r of data) {
-      seen.add(r.path); const old = cache.get(r.path), now = r.data || {};
-      if (!old || JSON.stringify(old) !== JSON.stringify(now)) { cache.set(r.path, now); changed = true; }
-    }
-    for (const p of [...cache.keys()]) if (!seen.has(p)) { cache.delete(p); changed = true; }
-    loaded = true; fails = 0; setStatus('');
-    if (changed) emit();
+  let cur = null;
+  function refresh() {
+    if (busy) { again = true; return cur; }
+    busy = true;
+    cur = cycle();
+    return cur;
+  }
+  async function cycle() {
+    try {
+      do {
+        again = false;
+        const t0 = Date.now();
+        const r1 = await sb.from(T).select('path,data').eq('path', STATE);
+        if (r1.error) throw r1.error;
+        let rows = r1.data || [];
+        const stRow = rows.find(r => r.path === STATE), gid = stRow && stRow.data && stRow.data.gid ? String(stRow.data.gid) : '';
+        if (gid) {
+          // the server hands back at most 1000 rows at a time, and a 22-player game can pass that
+          for (let from = 0; ; from += 1000) {
+            const r2 = await sb.from(T).select('path,data').like('path', 'wwt-' + gid + '-%').order('path').range(from, from + 999);
+            if (r2.error) { if (from > 0 && (r2.status === 416 || r2.error.code === 'PGRST103')) break; throw r2.error; }
+            const got = r2.data || [];
+            rows = rows.concat(got);
+            if (got.length < 1000) break;
+          }
+        }
+        // anything written or pushed to us after this fetch started is newer than what it returned
+        const fresh = p => (touched.get(p) || 0) < t0;
+        let changed = !loaded; const seen = new Set();
+        for (const r of rows) {
+          seen.add(r.path);
+          if (!fresh(r.path)) continue;
+          const old = cache.get(r.path), now = r.data || {};
+          if (!old || JSON.stringify(old) !== JSON.stringify(now)) { cache.set(r.path, now); changed = true; }
+        }
+        for (const p of [...cache.keys()]) if (!seen.has(p) && fresh(p) && !pending) { cache.delete(p); changed = true; }
+        loaded = true; fails = 0; setStatus('');
+        if (changed) emit();
+      } while (again);
+    } finally { busy = false; }
   }
   const safe = () => refresh().catch(() => { if (++fails >= 2) setStatus("Can't reach the game. Check your connection; this page keeps trying.", true); });
   function onChange(p) {
     const row = p.eventType === 'DELETE' ? p.old : p.new;
-    if (!row || !row.path || !row.path.startsWith(P) || !loaded) return;
-    if (p.eventType === 'DELETE') cache.delete(row.path); else cache.set(row.path, row.data || {});
+    if (!row || !row.path || !loaded) return;
+    const path = row.path;
+    if (path === STATE) {
+      const before = gidNow();
+      touched.set(path, Date.now()); cache.set(path, row.data || {}); emit();
+      // a new phase or a new game: fetch the rest (players, entries, answers) once
+      if (!HOST || gidNow() !== before) safe();
+      return;
+    }
+    if (!mine(path)) return;
+    touched.set(path, Date.now());
+    if (p.eventType === 'DELETE') cache.delete(path); else cache.set(path, row.data || {});
     emit();
   }
-  async function run(fn) {
-    inflight++; lastWrite = Date.now();
-    try { const { error } = await fn(); if (error) throw error; setStatus(''); }
+  async function run(path, fn) {
+    pending++; if (path) touched.set(path, Date.now());
+    try {
+      // party wifi drops out now and then: try a write four times before giving up
+      for (let i = 0; ; i++) {
+        let error;
+        try { ({ error } = await fn()); } catch (x) { error = x; }
+        // a retried insert that had already landed comes back as a duplicate: that's a success
+        if (!error || error.code === '23505' || /duplicate/i.test(error.message || '')) break;
+        if (i >= 3) throw error;
+        await new Promise(r => setTimeout(r, [400, 900, 1800][i]));
+      }
+      setStatus('');
+    }
     catch (e) { setStatus("Couldn't save. Check your connection and try again.", true); throw e; }
-    finally { inflight--; lastWrite = Date.now(); }
+    finally { pending--; if (path) touched.set(path, Date.now()); }
+  }
+  const chains = new Map();
+  function inOrder(path, job) {
+    const prev = chains.get(path) || Promise.resolve();
+    const next = prev.catch(() => {}).then(job);
+    chains.set(path, next);
+    next.catch(() => {}).then(() => { if (chains.get(path) === next) chains.delete(path); });
+    return next;
   }
   function start() {
     safe();
-    try {
-      sb.channel('wwt-' + rid()).on('postgres_changes', { event: '*', schema: 'public', table: T }, onChange)
-        .subscribe(st => { const was = live; live = st === 'SUBSCRIBED'; if (live && !was) safe(); });
-    } catch (e) { live = false; }
-    let n = 0;
-    setInterval(() => { n++; if (document.hidden && !HOST) return; if (!live || n % 4 === 0) safe(); }, 2000);
+    let ch = null;
+    function subscribe() {
+      try {
+        if (ch) { const old = ch; ch = null; live = false; sb.removeChannel(old).catch(() => {}); }
+        const filter = HOST ? { event: '*', schema: 'public', table: T } : { event: '*', schema: 'public', table: T, filter: 'path=eq.' + STATE };
+        const me = sb.channel('wwt-' + rid()).on('postgres_changes', filter, onChange);
+        ch = me;
+        me.subscribe(st => { if (ch !== me) return; const was = live; live = st === 'SUBSCRIBED'; if (live && !was) safe(); });
+      } catch (e) { live = false; }
+    }
+    subscribe();
+    let n = 0, misses = 0;
+    // a phone's live connection can die silently (sleep, wifi switch), so phones also check the one
+    // small game-state row every 2s and fetch everything else only when it moved on
+    let peeking = false;
+    async function peek(retry) {
+      if (peeking || busy) return; peeking = true;
+      const t0 = Date.now();
+      try {
+        const r = await sb.from(T).select('path,data').eq('path', STATE);
+        if (r.error) throw r.error;
+        const row = (r.data || [])[0], now = row ? row.data || {} : null, old = cache.get(STATE);
+        if (JSON.stringify(now) !== JSON.stringify(old || null) && (touched.get(STATE) || 0) < t0) {
+          // the live connection missed this: show it now, fetch the rest, and after two misses reconnect
+          if (now) { touched.set(STATE, Date.now()); cache.set(STATE, now); emit(); }
+          safe();
+          if (live && ++misses >= 2) { misses = 0; subscribe(); }
+        }
+        fails = 0; setStatus('');
+      } catch (e) {
+        if (++fails >= 2) setStatus("Can't reach the game. Check your connection; this page keeps trying.", true);
+        if (!retry) setTimeout(() => peek(true), 500);
+      }
+      finally { peeking = false; }
+    }
+    setInterval(() => {
+      n++; if (document.hidden && !HOST) return;
+      if (!live || n % 4 === 0) safe(); else if (!HOST) peek();
+    }, 2000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) safe(); });
+    addEventListener('online', safe);
   }
   return {
-    start, onChange: f => listeners.push(f), get loaded() { return loaded; },
+    start, refresh: safe, onChange: f => listeners.push(f), get loaded() { return loaded; },
     get: path => cache.get(path),
+    gp: kind => 'wwt-' + gidNow() + '-' + kind + '/',
     list: prefix => [...cache.entries()].filter(([p]) => p.startsWith(prefix)).map(([p, d]) => ({ ...d, id: p.slice(prefix.length) })),
-    set(path, data) { const d = { ...data }; cache.set(path, d); emit(); return run(() => sb.from(T).upsert({ path, data: d })); },
-    del(path) { cache.delete(path); emit(); return run(() => sb.from(T).delete().eq('path', path)); },
-    delPrefix(prefix) { for (const p of [...cache.keys()]) if (p.startsWith(prefix)) cache.delete(p); emit(); return run(() => sb.from(T).delete().like('path', prefix + '%')); },
-    async putPhoto(id, gid, data) { photos.set(id, data); await run(() => sb.from('party_photos').insert({ id, gid, data })); },
+    set(path, data) {
+      const d = { ...data }, had = cache.has(path), old = cache.get(path);
+      touched.set(path, Date.now()); cache.set(path, d); emit();
+      // if it never saved, put the screen back the way it was so nobody thinks it did
+      return inOrder(path, () => run(path, () => sb.from(T).upsert({ path, data: d })))
+        .catch(e => { if (cache.get(path) === d) { if (had) cache.set(path, old); else cache.delete(path); emit(); } throw e; });
+    },
+    del(path) {
+      const had = cache.has(path), old = cache.get(path);
+      touched.set(path, Date.now()); cache.delete(path); emit();
+      return inOrder(path, () => run(path, () => sb.from(T).delete().eq('path', path)))
+        .catch(e => { if (had && !cache.has(path)) { cache.set(path, old); emit(); } throw e; });
+    },
+    async putPhoto(id, gid, data) { photos.set(id, data); await run(null, () => sb.from('party_photos').insert({ id, gid, data })); },
     async getPhoto(id) {
       if (photos.has(id)) return photos.get(id);
-      const { data, error } = await sb.from('party_photos').select('data').eq('id', id);
-      if (error || !data || !data.length) return null;
-      photos.set(id, data[0].data); return data[0].data;
+      for (let i = 0; i < 3; i++) {
+        const { data, error } = await sb.from('party_photos').select('data').eq('id', id);
+        if (!error && data && data.length) { photos.set(id, data[0].data); return data[0].data; }
+        await new Promise(r => setTimeout(r, 700));
+      }
+      return null;
     },
-    delPhoto(id) { photos.delete(id); return run(() => sb.from('party_photos').delete().eq('id', id)); },
-    clearPhotosExcept(gid) { return run(() => sb.from('party_photos').delete().neq('gid', gid)); },
+    delPhoto(id) { photos.delete(id); return run(null, () => sb.from('party_photos').delete().eq('id', id)); },
+    clearPhotosExcept(gid) { return run(null, () => sb.from('party_photos').delete().neq('gid', gid)); },
   };
 }
 
@@ -359,18 +469,19 @@ const db = makeStore();
 
 /* ---------- derived game data ---------- */
 function game() {
-  const st = db.get('wwt-state/main') || null;
+  const st = db.get(STATE) || null;
   if (!st || !st.gid) return { st: null, players: [], entries: [], answers: [] };
   const gid = st.gid;
-  const players = db.list('wwt-player/').filter(p => p.gid === gid && txt(p.name)).sort((a, b) => (a.t || 0) - (b.t || 0));
-  const entries = db.list('wwt-entry/').filter(e => e.gid === gid).sort((a, b) => (a.t || 0) - (b.t || 0));
-  const answers = db.list('wwt-answer/').filter(a => a.gid === gid);
+  const players = db.list(db.gp('player')).filter(p => txt(p.name)).sort((a, b) => (a.t || 0) - (b.t || 0));
+  const entries = db.list(db.gp('entry')).sort((a, b) => (a.t || 0) - (b.t || 0));
+  const answers = db.list(db.gp('answer'));
   return { st, gid, players, entries, answers };
 }
 const nameOf = (g, pid) => { const p = g.players.find(x => x.id === pid); return p ? txt(p.name) : 'Someone'; };
 function points(st, a, q) {
   if (!q || a.choice !== q.a) return 0;
   const lim = (st.limit || 20) * 1000;
+  if (Number(a.ms) > lim + 1500) return 0;
   return 500 + Math.round(500 * Math.max(0, 1 - (Number(a.ms) || lim) / lim));
 }
 function scores(g, uptoQi) {
@@ -383,6 +494,8 @@ function scores(g, uptoQi) {
 }
 // the last question whose points count: during 'play' the current one is still open
 const scoredUpTo = st => st.phase === 'play' ? st.qi - 1 : st.qi;
+// a short fingerprint of the final results: the winners screens are rebuilt only if it changes
+const boardSig = g => scores(g, (g.st.qs || []).length - 1).map(r => r.id + ':' + r.score + ':' + r.name).join('|');
 const rankOf = (board, pid) => { const i = board.findIndex(r => r.id === pid); return i < 0 ? null : i + 1; };
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 
@@ -472,6 +585,7 @@ const Sound = (() => {
   function schedule() {
     if (!ctx || !theme) return;
     const th = THEMES[theme], spb = 60 / th.bpm;
+    if (nextT < ctx.currentTime - 0.25) nextT = ctx.currentTime + 0.1;
     while (nextT < ctx.currentTime + 0.5) {
       const [m, b] = th.notes[idx];
       const pos = beat - (th.lead || 0);
@@ -667,10 +781,46 @@ const Confetti = (() => {
 const app = $('#app');
 let screenKey = '', screen = null;
 function show(key, build) {
-  if (key === screenKey && screen) { if (screen.update) screen.update(); return; }
+  if (key === screenKey && screen) { if (screen.update) screen.update(); fitSoon(); return; }
   screenKey = key; const wrap = h('div', 'wrap'); app.textContent = ''; app.appendChild(wrap);
+  scrollTo(0, 0);  // a new screen starts at the top, even if the last one was scrolled down
   screen = build(wrap) || {}; if (screen.update) screen.update();
+  fitSoon();
 }
+
+/* The TV question and answer screens must fit on one screen, whatever the screen is: nobody can
+   scroll a TV mid-game. Shrink the photo first, then the fact text, then the answer buttons. */
+let fitT = 0;
+function fitSoon() { cancelAnimationFrame(fitT); fitT = requestAnimationFrame(fitTV); }
+function fitTV() {
+  const w = app.firstElementChild;
+  if (!w) return;
+  const els = [...w.querySelectorAll('.photo-box img, .fact, .opt, .ask')];
+  els.forEach(e => { e.style.height = e.style.fontSize = e.style.minHeight = e.style.minWidth = ''; });
+  // the TV fits its question and answer screens; a phone fits its question screen so the
+  // answer buttons are there without scrolling
+  if (!(screenKey.startsWith('q-') || (HOST && screenKey.startsWith('r-')))) return;
+  const over = () => {
+    let bottom = 0;
+    for (const c of w.querySelectorAll('.qhead, .timer, .photo-box, .fact, .ask, .opts, .hostbar, .board, .reveal-who'))
+      bottom = Math.max(bottom, c.getBoundingClientRect().bottom);
+    return bottom + 10 - innerHeight;
+  };
+  const img = w.querySelector('.photo-box img'), fact = w.querySelector('.fact'), opts = [...w.querySelectorAll('.opt')], ask = w.querySelector('.ask');
+  for (let i = 0, o = over(); o > 0 && i < 40; i++, o = over()) {
+    if (img && img.getBoundingClientRect().height > innerHeight * 0.18) {
+      img.style.minWidth = '0'; img.style.height = Math.max(innerHeight * 0.18, img.getBoundingClientRect().height - o - 2) + 'px';
+    } else if (fact && parseFloat(getComputedStyle(fact).fontSize) > 15) {
+      fact.style.fontSize = parseFloat(getComputedStyle(fact).fontSize) * 0.9 + 'px';
+    } else if (opts.length && parseFloat(getComputedStyle(opts[0]).fontSize) > 15) {
+      const f = parseFloat(getComputedStyle(opts[0]).fontSize) * 0.9, mh = Math.max(44, opts[0].getBoundingClientRect().height * 0.9);
+      opts.forEach(b => { b.style.fontSize = f + 'px'; b.style.minHeight = mh + 'px'; });
+      if (ask) ask.style.fontSize = Math.max(18, parseFloat(getComputedStyle(ask).fontSize) * 0.9) + 'px';
+    } else break;
+  }
+}
+addEventListener('resize', fitSoon);
+document.addEventListener('load', e => { if (e.target && e.target.tagName === 'IMG') fitSoon(); }, true);
 
 /* ================= PLAYER (phone) ================= */
 let qSeenAt = { key: '', t: 0 };
@@ -682,7 +832,8 @@ function playerRender() {
     w.appendChild(h('h1', '', 'Who Wrote This?'));
     w.appendChild(h('p', 'lead', "No game running yet. When the host opens the TV screen, this page updates by itself."));
   });
-  if (st.phase === 'done') return show('done-' + st.gid + (me ? '' : '-x'), w => {
+  // an answer that was still on its way can land after this screen first shows: rebuild if results change
+  if (st.phase === 'done') return show('done-' + st.gid + (me ? '' : '-x') + boardSig(g), w => {
     w.appendChild(h('h1', '', 'That’s a wrap!'));
     const board = scores(g, (st.qs || []).length - 1), r = rankOf(board, PID);
     if (me && r) {
@@ -724,7 +875,7 @@ function joinScreen(w, g) {
     if (!builder.chosen) { err.hidden = false; err.textContent = 'Pick a guy elf or a girl elf.'; return; }
     if (gg.players.some(p => p.id !== PID && txt(p.name).toLowerCase() === name.toLowerCase())) { err.hidden = false; err.textContent = 'Someone already joined as ' + name + '. Add an initial so people can tell you apart.'; return; }
     b.disabled = true; ls.set('wwt_name', name); ls.set('wwt_look', JSON.stringify(builder.look));
-    try { await db.set('wwt-player/' + PID, { gid: gg.gid, name, look: builder.look, ready: false, t: Date.now() }); }
+    try { await db.set(db.gp('player') + PID, { gid: gg.gid, name, look: builder.look, ready: false, t: Date.now() }); }
     catch (e2) { b.disabled = false; err.hidden = false; err.textContent = "Couldn't join. Check your connection and try again."; }
   });
 }
@@ -740,12 +891,12 @@ function lobbyScreen(w) {
     const e2 = h('p', 'err'); e2.hidden = true;
     const row = h('div', 'row'); const cancel = h('button', 'btn ghost', 'Cancel'); cancel.type = 'button'; const save = h('button', 'btn', 'Save my elf'); save.type = 'button'; row.append(cancel, save);
     elfCard.append(bld.el, e2, row);
-    cancel.addEventListener('click', () => { editing = false; elfCard.hidden = true; update(); });
+    cancel.addEventListener('click', () => { editing = false; elfCard.hidden = true; update(true); });
     save.addEventListener('click', async () => {
       if (!bld.chosen) { e2.hidden = false; e2.textContent = 'Pick a guy elf or a girl elf.'; return; }
       save.disabled = true; const cur = game().players.find(p => p.id === PID); const { id, ...rest } = cur;
       ls.set('wwt_look', JSON.stringify(bld.look));
-      try { await db.set('wwt-player/' + PID, { ...rest, look: bld.look }); editing = false; elfCard.hidden = true; update(); }
+      try { await db.set(db.gp('player') + PID, { ...rest, look: bld.look }); editing = false; elfCard.hidden = true; update(true); }
       catch (x) { save.disabled = false; e2.hidden = false; e2.textContent = "Couldn't save. Try again."; }
     });
     elfCard.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -781,9 +932,11 @@ function lobbyScreen(w) {
     if (!text) return fail('Write something first.');
     if (myEntries(g).length >= MAX_ENTRIES) return fail('You already have 2. Remove one to add another.');
     busy = true; save.disabled = true;
-    try { await db.set('wwt-entry/' + rid(), { gid: g.gid, pid: PID, kind: 'text', text, t: Date.now() }); ta.value = ''; cnt.textContent = '0 / ' + MAX_CHARS; err.hidden = true; }
-    catch (e) { fail("Couldn't save it. Try again."); }
-    busy = false; save.disabled = false; update();
+    // clear the box straight away, so anything typed while this saves is kept
+    ta.value = ''; cnt.textContent = '0 / ' + MAX_CHARS; err.hidden = true;
+    try { await db.set(db.gp('entry') + rid(), { gid: g.gid, pid: PID, kind: 'text', text, t: Date.now() }); }
+    catch (e) { if (!ta.value) { ta.value = text; cnt.textContent = text.length + ' / ' + MAX_CHARS; } fail("Couldn't save it. Try again."); }
+    busy = false; save.disabled = false; update(true);
   });
   pickBtn.addEventListener('click', () => file.click());
   // crop panel
@@ -859,16 +1012,20 @@ function lobbyScreen(w) {
       while (data.length > 200000 && q > 0.4) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
       const photoId = rid();
       await db.putPhoto(photoId, g.gid, data);
-      await db.set('wwt-entry/' + rid(), { gid: g.gid, pid: PID, kind: 'photo', photo: photoId, ask: txt(askIn.value), t: Date.now() });
+      await db.set(db.gp('entry') + rid(), { gid: g.gid, pid: PID, kind: 'photo', photo: photoId, ask: txt(askIn.value), t: Date.now() });
       cropping(false); if (C.url) { URL.revokeObjectURL(C.url); C.url = ''; }
     } catch (e) { cropErr.hidden = false; cropErr.textContent = "That photo couldn't be added. Check your connection and try again."; }
-    busy = false; addP.disabled = false; addP.textContent = 'Add photo'; update();
+    busy = false; addP.disabled = false; addP.textContent = 'Add photo'; update(true);
   });
 
   function myEntries(g) { return g.entries.filter(e => e.pid === PID); }
-  function update() {
+  let sig = '';
+  function update(force) {
     const g = game(), me = g.players.find(p => p.id === PID); if (!me) return;
     const mine = myEntries(g);
+    const s2 = JSON.stringify([me.name, me.look, !!me.ready, editing, mine.map(e => [e.id, e.kind, e.text, e.ask, e.photo])]);
+    if (!force && s2 === sig) return;
+    sig = s2;
     head.textContent = '';
     const top = h('div', 'me-elf'); const pic = h('div', 'pic' + (me.ready ? ' cheer' : '')); pic.innerHTML = elfSVG(PID, me.look);
     const tt = h('div'); tt.append(h('p', 'eyebrow', 'Hi ' + txt(me.name) + ', this is your elf on the TV'), h('h1', '', 'Who Wrote This?'));
@@ -884,7 +1041,7 @@ function lobbyScreen(w) {
       if (e.kind === 'photo') { const im = h('img'); im.alt = 'Your photo'; db.getPhoto(e.photo).then(d => { if (d) im.src = d; }); row.appendChild(im); const tx = h('span', 'txt', 'Photo'); tx.appendChild(h('span', 'sub', askText(e))); row.appendChild(tx); }
       else row.appendChild(h('span', 'txt', txt(e.text)));
       const del = h('button', 'btn quiet', 'Remove'); del.type = 'button';
-      del.addEventListener('click', async () => { del.disabled = true; try { if (e.kind === 'photo' && e.photo) db.delPhoto(e.photo).catch(() => {}); await db.del('wwt-entry/' + e.id); } catch (x) { del.disabled = false; } });
+      del.addEventListener('click', async () => { del.disabled = true; try { if (e.kind === 'photo' && e.photo) db.delPhoto(e.photo).catch(() => {}); await db.del(db.gp('entry') + e.id); } catch (x) { del.disabled = false; } });
       row.appendChild(del); listCard.appendChild(row);
     });
     form.hidden = mine.length >= MAX_ENTRIES && crop.hidden;
@@ -892,7 +1049,7 @@ function lobbyScreen(w) {
     const ready = !!me.ready;
     const rb = h('button', ready ? 'btn ghost' : 'btn', ready ? 'Not ready yet' : "I'm ready"); rb.type = 'button';
     rb.disabled = !mine.length && !ready;
-    rb.addEventListener('click', () => { const { id, ...rest } = me; db.set('wwt-player/' + PID, { ...rest, ready: !ready }).catch(() => {}); });
+    rb.addEventListener('click', () => { rb.disabled = true; const { id, ...rest } = me; db.set(db.gp('player') + PID, { ...rest, ready: !ready }).catch(() => { rb.disabled = false; }); });
     foot.appendChild(rb);
     foot.appendChild(h('p', 'muted', ready ? 'Waiting for the host to start…' : mine.length ? 'Tap when you’re done.' : 'Add at least 1 to get ready.'));
   }
@@ -905,28 +1062,35 @@ function questionScreen(w, q) {
   const lim = (st.limit || 20) * 1000;
   const hd = h('div', 'qhead'); hd.appendChild(h('span', 'eyebrow', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length)); w.appendChild(hd);
   const bar = timerBar(); w.appendChild(bar);
-  const entry = g0.entries.find(e => e.id === q.e);
-  w.appendChild(factView(entry));
+  const factBox = h('div'); w.appendChild(factBox);
   const area = h('div'); w.appendChild(area);
+  let factShown = false, sig = '', sending = false;
   const tick = setInterval(() => {
     if (!document.contains(bar)) return clearInterval(tick);
     const left = Math.max(0, 1 - (Date.now() - qSeenAt.t) / lim);
     bar.firstChild.style.transform = 'scaleX(' + left + ')';
   }, 250);
   function update() {
-    const g = game(); area.textContent = '';
+    const g = game(), entry = g.entries.find(e => e.id === q.e);
+    if (!factShown && entry) { factBox.appendChild(factView(entry)); factShown = true; }
+    const mine = g.answers.find(a => a.qi === st.qi && a.pid === PID);
+    const s2 = JSON.stringify([mine && mine.choice, q.o.map(pid => nameOf(g, pid)), !!entry]);
+    if (s2 === sig) return;
+    sig = s2; area.textContent = '';
     if (q.a === PID) {
       const m = h('div', 'card big-msg'); m.appendChild(h('p', 'script', 'This one’s yours!')); m.appendChild(h('p', 'lead', 'Keep a straight face while everyone guesses.'));
       area.appendChild(m); return;
     }
-    const mine = g.answers.find(a => a.qi === st.qi && a.pid === PID);
-    area.appendChild(h('p', 'ask', askText(g.entries.find(e => e.id === q.e))));
+    area.appendChild(h('p', 'ask', askText(entry)));
     area.appendChild(optionGrid(g, q, {
       picked: mine && mine.choice,
       pick: async pid => {
-        const ms = Date.now() - qSeenAt.t;
-        if (ms > lim + 1500) return;
-        try { await db.set('wwt-answer/' + st.gid + '_' + st.qi + '_' + PID, { gid: st.gid, qi: st.qi, pid: PID, choice: pid, ms }); } catch (e) {}
+        if (sending) return;
+        const now = game().st, ms = Date.now() - qSeenAt.t;
+        if (!now || now.phase !== 'play' || now.qi !== st.qi || now.gid !== st.gid || ms > lim + 1500) return;
+        sending = true;
+        try { await db.set(db.gp('answer') + st.qi + '_' + PID, { qi: st.qi, pid: PID, choice: pid, ms }); }
+        catch (e) { sending = false; sig = ''; update(); }
       },
     }));
     if (mine) area.appendChild(h('p', 'muted', 'Locked in. Watch the TV for the answer.'));
@@ -935,21 +1099,29 @@ function questionScreen(w, q) {
 }
 
 function revealScreenPhone(w, q) {
-  const g = game(), st = g.st;
-  w.appendChild(h('p', 'eyebrow', 'Question ' + (st.qi + 1) + ' of ' + st.qs.length));
+  const st0 = game().st;
+  w.appendChild(h('p', 'eyebrow', 'Question ' + (st0.qi + 1) + ' of ' + st0.qs.length));
   const m = h('div', 'card big-msg'); w.appendChild(m);
-  const author = nameOf(g, q.a);
-  if (q.a === PID) {
-    const guessers = g.answers.filter(a => a.qi === st.qi && a.pid !== PID);
-    const right = guessers.filter(a => a.choice === q.a).length;
-    m.appendChild(h('p', 'script', right === 0 && guessers.length ? 'Nobody guessed you!' : right + ' of ' + guessers.length + ' guessed you'));
-  } else {
-    const mine = g.answers.find(a => a.qi === st.qi && a.pid === PID);
-    if (mine && mine.choice === q.a) { m.appendChild(h('p', 'script', 'Correct!')); m.appendChild(h('p', 'score', '+' + points(st, mine, q))); }
-    else { m.appendChild(h('p', 'script', mine ? 'Not quite' : 'Too slow!')); m.appendChild(h('p', 'lead', 'It was ' + author + '.')); }
+  const rank = h('p', 'lead'); w.appendChild(rank);
+  let sig = '';
+  function update() {
+    const g = game(), st = g.st, author = nameOf(g, q.a);
+    const here = g.answers.filter(a => a.qi === st.qi);
+    const board = scores(g, st.qi), r = rankOf(board, PID);
+    const s2 = JSON.stringify([author, here.map(a => a.pid + a.choice), r, r && board[r - 1].score]);
+    if (s2 === sig) return; sig = s2;
+    m.textContent = '';
+    if (q.a === PID) {
+      const guessers = here.filter(a => a.pid !== PID), right = guessers.filter(a => a.choice === q.a).length;
+      m.appendChild(h('p', 'script', right === 0 && guessers.length ? 'Nobody guessed you!' : right + ' of ' + guessers.length + ' guessed you'));
+    } else {
+      const mine = here.find(a => a.pid === PID);
+      if (mine && mine.choice === q.a && points(st, mine, q)) { m.appendChild(h('p', 'script', 'Correct!')); m.appendChild(h('p', 'score', '+' + points(st, mine, q))); }
+      else { m.appendChild(h('p', 'script', mine ? (mine.choice === q.a ? 'Too slow!' : 'Not quite') : 'Too slow!')); m.appendChild(h('p', 'lead', 'It was ' + author + '.')); }
+    }
+    rank.textContent = r ? 'You’re ' + ordinal(r) + ' with ' + board[r - 1].score.toLocaleString() + ' points.' : '';
   }
-  const board = scores(g, st.qi), r = rankOf(board, PID);
-  if (r) w.appendChild(h('p', 'lead', 'You’re ' + ordinal(r) + ' with ' + board[r - 1].score.toLocaleString() + ' points.'));
+  return { update };
 }
 
 /* ================= HOST (TV) ================= */
@@ -967,7 +1139,7 @@ function hostRender() {
     return show('start', w => hostStart(w));
   }
   if (phase === 'lobby') { Sound.theme('lobby'); return show('lobby-' + st.gid, w => hostLobby(w)); }
-  if (phase === 'done') { syncElves([]); return show('done-' + st.gid, w => hostDone(w)); }
+  if (phase === 'done') { syncElves([]); return show('done-' + st.gid + boardSig(g), w => hostDone(w)); }
   syncElves([]); Sound.theme(null);
   const q = (st.qs || [])[st.qi]; if (!q) return;
   if (st.phase === 'play') return show('q-' + st.gid + '-' + st.qi, w => hostQuestion(w, q));
@@ -990,11 +1162,10 @@ function hostStart(w) {
 
 async function newGame(btn) {
   if (btn) btn.disabled = true;
-  const gid = rid();
+  const gid = rid(), prev = db.get(STATE) || {};
   try {
-    await Promise.all([db.delPrefix('wwt-answer/'), db.delPrefix('wwt-entry/'), db.delPrefix('wwt-player/')]);
-    await db.clearPhotosExcept(gid).catch(() => {});
-    await db.set('wwt-state/main', { gid, phase: 'lobby', qi: 0, qs: [], limit: (db.get('wwt-state/main') || {}).limit || 20, at: Date.now() });
+    await db.set(STATE, { gid, phase: 'lobby', qi: 0, qs: [], limit: prev.limit || 20, maxq: prev.maxq || 0, at: Date.now() });
+    db.clearPhotosExcept(gid).catch(() => {});
   } catch (e) { if (btn) btn.disabled = false; }
 }
 
@@ -1028,8 +1199,8 @@ function hostLobby(w) {
   bar.append(limLbl, maxLbl, h('span', 'grow'), resetB, startB);
   right.insertBefore(est, bar.nextSibling);
   startB.classList.add('huge');
-  lim.addEventListener('change', () => { const st = game().st; db.set('wwt-state/main', { ...st, limit: Number(lim.value) }).catch(() => {}); });
-  maxq.addEventListener('change', () => { const st = game().st; db.set('wwt-state/main', { ...st, maxq: maxq.value === 'all' ? 0 : Number(maxq.value) }).catch(() => {}); });
+  lim.addEventListener('change', () => { const st = game().st; db.set(STATE, { ...st, limit: Number(lim.value) }).catch(() => {}); });
+  maxq.addEventListener('change', () => { const st = game().st; db.set(STATE, { ...st, maxq: maxq.value === 'all' ? 0 : Number(maxq.value) }).catch(() => {}); });
   resetB.addEventListener('click', () => {
     if (armed !== 'reset') { armed = 'reset'; resetB.textContent = 'Tap again to clear everyone'; setTimeout(() => { if (armed === 'reset') { armed = ''; resetB.textContent = 'Clear and start over'; } }, 3500); return; }
     armed = ''; newGame(resetB);
@@ -1039,8 +1210,8 @@ function hostLobby(w) {
   function update() {
     const g = game();
     syncElves(g.players.map(p => ({ id: p.id, name: txt(p.name), ready: !!p.ready, look: p.look })), { sound: !first }); first = false;
-    lim.value = String(g.st.limit || 20);
-    maxq.value = g.st.maxq ? String(g.st.maxq) : 'all';
+    if (document.activeElement !== lim) lim.value = String(g.st.limit || 20);
+    if (document.activeElement !== maxq) maxq.value = g.st.maxq ? String(g.st.maxq) : 'all';
     const nQ = g.st.maxq ? Math.min(g.st.maxq, g.entries.length) : g.entries.length;
     est.textContent = nQ ? nQ + (nQ === 1 ? ' question' : ' questions') + ' · about ' + Math.max(1, Math.round(nQ * ((g.st.limit || 20) + 12) / 60)) + ' min' + (g.st.maxq && g.entries.length > g.st.maxq ? ' (everyone gets at least one of theirs in first)' : '') : '';
     const nE = g.entries.length, nR = g.players.filter(p => p.ready).length;
@@ -1063,7 +1234,10 @@ function hostLobby(w) {
 }
 
 async function startGame(btn) {
+  btn.disabled = true;
+  await db.refresh();
   const g = game();
+  if (!g.st || g.st.phase !== 'lobby') return;
   const ids = g.players.map(p => p.id);
   let es = shuffle(g.entries.filter(e => ids.includes(e.pid)));
   const cap = g.st.maxq || 0;
@@ -1088,9 +1262,8 @@ async function startGame(btn) {
     return [...same, ...shuffle(others.filter(x => !same.includes(x)))].slice(0, 3);
   };
   const qs = es.map(e => ({ e: e.id, a: e.pid, o: shuffle([e.pid, ...decoys(e.pid)]) }));
-  if (!qs.length) return;
-  btn.disabled = true;
-  try { await db.set('wwt-state/main', { ...g.st, phase: 'play', qi: 0, qs, at: Date.now() }); } catch (e) { btn.disabled = false; }
+  if (!qs.length) { btn.disabled = false; return; }
+  try { await db.set(STATE, { ...g.st, phase: 'play', qi: 0, qs, at: Date.now() }); } catch (e) { btn.disabled = false; }
 }
 
 function hostQuestion(w, q) {
@@ -1110,7 +1283,7 @@ function hostQuestion(w, q) {
   async function reveal() {
     if (revealing) return; revealing = true;
     const s = game().st; if (s.phase !== 'play') return;
-    try { await db.set('wwt-state/main', { ...s, phase: 'reveal', at: Date.now() }); } catch (e) { revealing = false; }
+    try { await db.set(STATE, { ...s, phase: 'reveal', at: Date.now() }); } catch (e) { revealing = false; }
   }
   const tick = setInterval(() => {
     if (!document.contains(bar)) return clearInterval(tick);
@@ -1138,19 +1311,26 @@ function hostReveal(w, q) {
   Sound.reveal();
   const who = h('div', 'reveal-who'); who.appendChild(h('p', 'eyebrow', revealLabel(entry))); who.appendChild(h('p', 'script', nameOf(g, q.a)));
   leftC.appendChild(who);
-  const counts = {}; g.answers.filter(a => a.qi === st.qi).forEach(a => { counts[a.choice] = (counts[a.choice] || 0) + 1; });
-  leftC.appendChild(optionGrid(g, q, { reveal: true, counts }));
+  const optBox = h('div'); leftC.appendChild(optBox);
   grid.appendChild(leftC);
   const right = h('div', 'card'); right.appendChild(h('p', 'lbl', 'Leaderboard'));
-  const board = scores(g, st.qi);
-  const gains = new Map(g.answers.filter(a => a.qi === st.qi).map(a => [a.pid, points(st, a, q)]));
   const ol = h('ol', 'board');
-  board.slice(0, 6).forEach((r, i) => {
-    const li = h('li'); li.appendChild(h('span', 'rk', String(i + 1))); li.appendChild(h('span', 'nm', r.name));
-    if (gains.get(r.id)) li.appendChild(h('span', 'gain', '+' + gains.get(r.id)));
-    li.appendChild(h('span', 'score', r.score.toLocaleString())); ol.appendChild(li);
-  });
   right.appendChild(ol); grid.appendChild(right);
+  let sig = '';
+  function update() {
+    const g = game(), here = g.answers.filter(a => a.qi === st.qi);
+    const s2 = JSON.stringify([here.map(a => a.pid + a.choice + a.ms), g.players.map(p => p.id + p.name)]);
+    if (s2 === sig) return; sig = s2;
+    const counts = {}; here.forEach(a => { counts[a.choice] = (counts[a.choice] || 0) + 1; });
+    optBox.textContent = ''; optBox.appendChild(optionGrid(g, q, { reveal: true, counts }));
+    const board = scores(g, st.qi), gains = new Map(here.map(a => [a.pid, points(st, a, q)]));
+    ol.textContent = '';
+    board.slice(0, 6).forEach((r, i) => {
+      const li = h('li'); li.appendChild(h('span', 'rk', String(i + 1))); li.appendChild(h('span', 'nm', r.name));
+      if (gains.get(r.id)) li.appendChild(h('span', 'gain', '+' + gains.get(r.id)));
+      li.appendChild(h('span', 'score', r.score.toLocaleString())); ol.appendChild(li);
+    });
+  }
   const last = st.qi >= st.qs.length - 1;
   const hb = h('div', 'hostbar'); const end = h('button', 'btn ghost small', 'End game'); end.type = 'button';
   const next = h('button', 'btn', last ? 'See the winners' : 'Next question'); next.type = 'button';
@@ -1158,15 +1338,16 @@ function hostReveal(w, q) {
   next.addEventListener('click', () => advance(next));
   end.addEventListener('click', () => {
     if (armed !== 'end') { armed = 'end'; end.textContent = 'Tap again to end'; setTimeout(() => { if (armed === 'end') { armed = ''; end.textContent = 'End game'; } }, 3500); return; }
-    armed = ''; db.set('wwt-state/main', { ...game().st, phase: 'done', at: Date.now() }).catch(() => {});
+    armed = ''; db.set(STATE, { ...game().st, phase: 'done', at: Date.now() }).catch(() => {});
   });
   next.focus({ preventScroll: true });
+  return { update };
 }
 async function advance(btn) {
   const st = game().st; if (st.phase !== 'reveal') return;
   if (btn) btn.disabled = true;
   const last = st.qi >= st.qs.length - 1;
-  try { await db.set('wwt-state/main', last ? { ...st, phase: 'done', at: Date.now() } : { ...st, phase: 'play', qi: st.qi + 1, at: Date.now() }); }
+  try { await db.set(STATE, last ? { ...st, phase: 'done', at: Date.now() } : { ...st, phase: 'play', qi: st.qi + 1, at: Date.now() }); }
   catch (e) { if (btn) btn.disabled = false; }
 }
 

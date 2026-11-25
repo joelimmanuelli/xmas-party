@@ -1077,7 +1077,7 @@ function makeStore(url, key) {
   async function refresh() {
     if (inflight) return;
     const t0 = Date.now();
-    const { data, error } = await sb.from(T).select('path,data');
+    const { data, error } = await sb.from(T).select('path,data').not('path', 'like', 'wwt-%');
     if (error) throw bad(error);
     if (inflight || lastWrite > t0) return;   // an edit started meanwhile: the next pass catches up
     const changed = new Set(), seen = new Set();
@@ -1097,7 +1097,7 @@ function makeStore(url, key) {
   }
   function onChange(p) {
     const row = p.eventType === 'DELETE' ? p.old : p.new;
-    if (!row || !row.path || !loaded) return;
+    if (!row || !row.path || !loaded || String(row.path).startsWith('wwt-')) return;
     if (p.eventType === 'DELETE') { if (!cache.has(row.path)) return; cache.delete(row.path); }
     else cache.set(row.path, row.data || {});
     emit(collOf(row.path));
