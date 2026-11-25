@@ -168,7 +168,8 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .builder .preview{width:110px;align-self:center}
 .kind{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kind button{display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 6px 10px;font-weight:700;color:var(--teal);cursor:pointer}
-.kind button .mini{width:52px}
+.kind .gicon{display:block;width:44px;height:44px}.kind .gicon svg{display:block;width:100%;height:100%}
+.kind .k-m .gicon{color:#1E7A9A}.kind .k-f .gicon{color:#C2185B}
 .kind button[aria-pressed="true"]{border-color:var(--coral);background:#FFF1EC}
 .swrow{display:flex;flex-direction:column;gap:6px}
 .sws{display:flex;flex-wrap:wrap;gap:8px}
@@ -568,15 +569,26 @@ ${fringe}
 <circle cx="47" cy="6" r="4.6" fill="#fff" ${st}/>${bow}
 </svg>`;
 }
+// redraw an elf without replacing its <svg>, so its animation carries on
+function swapElf(holder, markup) {
+  const tmp = document.createElement('div'); tmp.innerHTML = markup;
+  const next = tmp.firstElementChild, cur = holder.querySelector('svg.elf-svg');
+  if (cur && next) cur.replaceChildren(...next.childNodes); else { holder.textContent = ''; if (next) holder.appendChild(next); }
+}
 // elf builder for the phone: kind (guy/girl), hat, outfit, skin, hair, extra
 function elfBuilder(seed, start, onChange) {
   const look = { ...elfLook(seed, start) }; let chosen = !!(start && (start.g === 'm' || start.g === 'f'));
   const box = h('div', 'builder');
   const preview = h('div', 'preview wave'); box.appendChild(preview);
   const kindLbl = h('p', 'lbl', 'Your elf'); const kind = h('div', 'kind'); kind.setAttribute('role', 'group'); kind.setAttribute('aria-label', 'Guy or girl elf');
-  const kb = [['m', 'Guy elf'], ['f', 'Girl elf']].map(([v, t]) => {
-    const b = h('button'); b.type = 'button'; const mini = h('span', 'mini'); b.append(mini, h('span', '', t));
-    b.addEventListener('click', () => { look.g = v; chosen = true; paint(); }); kind.appendChild(b); return [v, b, mini];
+  const kb = [['m', '\u2642', 'Guy'], ['f', '\u2640', 'Girl']].map(([v, icon, t]) => {
+    const b = h('button', 'k-' + v); b.type = 'button'; b.setAttribute('aria-label', t + ' elf');
+    const ic = h('span', 'gicon');
+    ic.innerHTML = v === 'm'
+      ? '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="16" cy="24" r="10" fill="none" stroke="currentColor" stroke-width="4"/><path d="M23 17 L34 6 M24 6 H34 V16" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="15" r="10" fill="none" stroke="currentColor" stroke-width="4"/><path d="M20 25 V37 M14 31 H26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+    b.append(ic, h('span', '', t));
+    b.addEventListener('click', () => { look.g = v; chosen = true; paint(); }); kind.appendChild(b); return [v, b];
   });
   box.append(kindLbl, kind);
   const rows = [];
@@ -590,8 +602,8 @@ function elfBuilder(seed, start, onChange) {
   ACCS.forEach(([v, t]) => { const b = h('button', 'acc', t); b.type = 'button'; b.addEventListener('click', () => { look.acc = v; paint(); }); ag.appendChild(b); rows.push(['acc', v, b]); });
   ar.appendChild(ag); box.appendChild(ar);
   function paint() {
-    preview.innerHTML = elfSVG(seed, look);
-    kb.forEach(([v, b, mini]) => { b.setAttribute('aria-pressed', chosen && look.g === v); mini.innerHTML = elfSVG(seed, { ...look, g: v }); mini.classList.add('still'); });
+    swapElf(preview, elfSVG(seed, look));
+    kb.forEach(([v, b]) => b.setAttribute('aria-pressed', chosen && look.g === v));
     rows.forEach(([k, v, b]) => b.setAttribute('aria-pressed', look[k] === v));
     if (onChange) onChange(look);
   }
@@ -616,7 +628,7 @@ function syncElves(list, { sound = false } = {}) {
       if (sound) { el.classList.add('new'); Sound.join(); setTimeout(() => el.classList.remove('new'), 800); }
     }
     const lk = JSON.stringify(x.look || null), flipEl = el.querySelector('.flip');
-    if (el.dataset.look !== lk) { el.dataset.look = lk; flipEl.innerHTML = elfSVG(x.seed || x.id, x.look); }
+    if (el.dataset.look !== lk) { el.dataset.look = lk; swapElf(flipEl, elfSVG(x.seed || x.id, x.look)); }
     const tag = el.querySelector('.tag');
     tag.hidden = !x.name; tag.textContent = x.name ? x.name + (x.ready ? ' ✓' : '') : ''; tag.classList.toggle('ready', !!x.ready);
   });
