@@ -185,6 +185,7 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .btn.huge{font-size:clamp(1.1rem,2.6vmin,1.7rem);padding:clamp(14px,2.2vmin,22px) clamp(22px,3.4vmin,40px);align-self:flex-start;border-radius:16px;box-shadow:0 6px 0 #B83A26;transition:transform .1s}
 .btn.huge:active{transform:translateY(4px);box-shadow:0 2px 0 #B83A26}
 #music{position:fixed;bottom:12px;left:12px;z-index:6;font-size:.85rem;background:#fff;color:var(--teal);border:2px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:700;cursor:pointer}
+body[data-screen="done"] #music{bottom:auto;left:auto;right:clamp(16px,3vmin,40px);top:clamp(112px,17vmin,170px)}
 #music[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
 /* winners */
 .done-wrap{min-height:100vh;min-height:100dvh}
@@ -204,6 +205,14 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .pcol.p1 .blk{height:clamp(100px,19vmin,230px);background:var(--o1)}
 .pcol.p1 .nm{font-size:clamp(1.4rem,calc(var(--nm) * 1.3),4.2rem)}
 .pcol.rest .blk{height:clamp(44px,7vmin,96px)}
+.podium2.crowd{max-width:98%;gap:clamp(2px,.5vmin,8px)}
+.crowd .pcol.rest .nm{font-size:clamp(.72rem,var(--nm),1.4rem);line-height:1.05;word-break:normal;overflow-wrap:normal;hyphens:none;background:rgba(255,247,242,.94);border-radius:6px;padding:2px 4px;text-shadow:none}
+.crowd .pcol.rest .pts{background:rgba(255,247,242,.94);border:0;border-radius:6px;padding:0 4px;margin-top:2px;font-size:clamp(.62rem,calc(var(--nm) * .62),1rem)}
+.crowd .pcol.rest .pts::after{content:""}
+.crowd .pcol.p1 .elfstand{width:clamp(56px,11vmin,150px)}
+.crowd .pcol.p1 .nm{font-size:clamp(1.4rem,4.4vmin,3.6rem)}
+.crowd .pcol.p1 .pts{font-size:clamp(.9rem,2.2vmin,1.5rem)}
+.crowd .pcol.p1 .blk{font-size:clamp(2rem,7vmin,5rem)}
 .pcol.c2 .blk{background:var(--o2)}.pcol.c0 .blk{background:var(--o3)}.pcol.c1 .blk{background:var(--o4)}
 .star{font-size:clamp(2rem,6vmin,4.4rem);color:#E2B452;line-height:1;animation:glow 1.4s ease-in-out infinite alternate;text-shadow:0 0 18px rgba(226,180,82,.8);position:relative;z-index:1}
 @keyframes glow{from{transform:scale(.9) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
@@ -918,11 +927,17 @@ function hostLobby(w) {
   const limLbl = h('label', 'lbl', 'Seconds per question '); const lim = h('select'); lim.id = 'limit';
   [15, 20, 30].forEach(s => { const o = h('option', '', String(s)); o.value = s; lim.appendChild(o); });
   limLbl.appendChild(lim);
+  const maxLbl = h('label', 'lbl', 'Questions '); const maxq = h('select'); maxq.id = 'maxq';
+  [['all', 'All'], ['10', '10'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30']].forEach(([v, t]) => { const o = h('option', '', t); o.value = v; maxq.appendChild(o); });
+  maxLbl.appendChild(maxq);
+  const est = h('p', 'muted');
   const startB = h('button', 'btn', 'Start the game'); startB.type = 'button';
   const resetB = h('button', 'btn ghost small', 'Clear and start over'); resetB.type = 'button';
-  bar.append(limLbl, h('span', 'grow'), resetB, startB);
+  bar.append(limLbl, maxLbl, h('span', 'grow'), resetB, startB);
+  right.insertBefore(est, bar.nextSibling);
   startB.classList.add('huge');
   lim.addEventListener('change', () => { const st = game().st; db.set('wwt-state/main', { ...st, limit: Number(lim.value) }).catch(() => {}); });
+  maxq.addEventListener('change', () => { const st = game().st; db.set('wwt-state/main', { ...st, maxq: maxq.value === 'all' ? 0 : Number(maxq.value) }).catch(() => {}); });
   resetB.addEventListener('click', () => {
     if (armed !== 'reset') { armed = 'reset'; resetB.textContent = 'Tap again to clear everyone'; setTimeout(() => { if (armed === 'reset') { armed = ''; resetB.textContent = 'Clear and start over'; } }, 3500); return; }
     armed = ''; newGame(resetB);
@@ -933,6 +948,9 @@ function hostLobby(w) {
     const g = game();
     syncElves(g.players.map(p => ({ id: p.id, name: txt(p.name), ready: !!p.ready })), { sound: !first }); first = false;
     lim.value = String(g.st.limit || 20);
+    maxq.value = g.st.maxq ? String(g.st.maxq) : 'all';
+    const nQ = g.st.maxq ? Math.min(g.st.maxq, g.entries.length) : g.entries.length;
+    est.textContent = nQ ? nQ + (nQ === 1 ? ' question' : ' questions') + ' · about ' + Math.max(1, Math.round(nQ * ((g.st.limit || 20) + 12) / 60)) + ' min' + (g.st.maxq && g.entries.length > g.st.maxq ? ' (everyone gets at least one of theirs in first)' : '') : '';
     const nE = g.entries.length, nR = g.players.filter(p => p.ready).length;
     counts.textContent = g.players.length + (g.players.length === 1 ? ' player' : ' players') + ' · ' + nE + (nE === 1 ? ' fact or photo' : ' facts and photos') + ' · ' + nR + ' ready';
     players.textContent = '';
@@ -956,6 +974,17 @@ async function startGame(btn) {
   const g = game();
   const ids = g.players.map(p => p.id);
   let es = shuffle(g.entries.filter(e => ids.includes(e.pid)));
+  const cap = g.st.maxq || 0;
+  if (cap && es.length > cap) {
+    const by = new Map(); es.forEach(e => { if (!by.has(e.pid)) by.set(e.pid, []); by.get(e.pid).push(e); });
+    const pick = []; let round = 0;
+    while (pick.length < cap) {
+      const layer = shuffle([...by.values()].map(list => list[round]).filter(Boolean));
+      if (!layer.length) break;
+      pick.push(...layer.slice(0, cap - pick.length)); round++;
+    }
+    es = shuffle(pick);
+  }
   for (let i = 1; i < es.length; i++) if (es[i].pid === es[i - 1].pid) {
     const j = es.findIndex((e, k) => k > i && e.pid !== es[i - 1].pid);
     if (j > 0) [es[i], es[j]] = [es[j], es[i]];
@@ -1057,10 +1086,12 @@ function hostDone(w) {
   const seq = board.length ? [...left.reverse(), 0, ...right] : [];
   const n = Math.max(1, seq.length);
   const pod = h('div', 'podium2');
-  pod.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, 1fr))';
+  const crowd = n >= 10;
+  pod.style.gridTemplateColumns = seq.map(ri => ri === 0 ? (crowd ? '2.6fr' : '1fr') : '1fr').map(f => 'minmax(0,' + f + ')').join(' ');
+  if (crowd) pod.classList.add('crowd');
   pod.style.setProperty('--n', n);
-  pod.style.setProperty('--nm', n <= 3 ? '5vmin' : n <= 6 ? '3.6vmin' : n <= 10 ? '2.8vmin' : '2.2vmin');
-  pod.style.setProperty('--elf', n <= 3 ? '11vmin' : n <= 6 ? '9vmin' : n <= 10 ? '7vmin' : '5.5vmin');
+  pod.style.setProperty('--nm', n <= 3 ? '5vmin' : n <= 6 ? '3.6vmin' : n <= 9 ? '2.8vmin' : n <= 14 ? '2.4vmin' : '2vmin');
+  pod.style.setProperty('--elf', n <= 3 ? '11vmin' : n <= 6 ? '9vmin' : n <= 9 ? '7vmin' : n <= 14 ? '6vmin' : '5vmin');
   const FIRST = 3.0;
   seq.forEach((ri, k) => {
     const r = board[ri], place = ri + 1, first = place === 1;
@@ -1069,7 +1100,7 @@ function hostDone(w) {
     const who = h('div', 'who');
     if (first) { who.appendChild(h('div', 'rays')); who.appendChild(h('div', 'star', '★')); }
     const e = h('div', 'elfstand ' + (first ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id); who.appendChild(e);
-    who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + ' pts'));
+    who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + (crowd && !first ? '' : ' pts')));
     col.append(who, h('div', 'blk', first ? '1st' : '')); pod.appendChild(col);
   });
   if (!board.length) w.appendChild(h('p', 'lead', 'Nobody played this round.'));
