@@ -174,6 +174,18 @@ body.tv[data-scene="full"] .wrap{padding-bottom:20vh}
 .wave .elf-svg .arm-r{animation:wave .6s ease-in-out infinite alternate}
 @keyframes wave{from{transform:rotate(-120deg)}to{transform:rotate(-165deg)}}
 .me-elf{display:flex;align-items:center;gap:12px}
+.builder{display:flex;flex-direction:column;gap:12px}
+.builder .preview{width:110px;align-self:center}
+.kind{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kind button{display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 6px 10px;font-weight:700;color:var(--teal);cursor:pointer}
+.kind button .mini{width:52px}
+.kind button[aria-pressed="true"]{border-color:var(--coral);background:#FFF1EC}
+.swrow{display:flex;flex-direction:column;gap:6px}
+.sws{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--teal)}
+.acc{border:2px solid var(--line);background:#fff;color:var(--teal);border-radius:999px;padding:6px 12px;font-weight:700;cursor:pointer}
+.acc[aria-pressed="true"]{border-color:var(--teal);background:var(--teal);color:#fff}
 .me-elf .pic{width:64px;flex:none}
 /* host start screen */
 .hero{display:flex;flex-direction:column;gap:clamp(10px,2vmin,22px);max-width:980px}
@@ -524,25 +536,76 @@ const HATS = ['#D9452E', '#2F6B64', '#A86B0A', '#5A4A8C', '#C2185B', '#1E7A9A', 
 const TUNICS = ['#2F7D4F', '#C8432F', '#2F6B64', '#7A5AA8', '#1F6E8C', '#A3672A'];
 const SKINS = ['#F6D2B6', '#E8B48F', '#C98E66', '#8D5A3B', '#F1C6A1'];
 const hashN = v => { let x = 2166136261; for (const c of String(v)) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); } x ^= x >>> 15; x = Math.imul(x, 0x2c1b3c6d); x ^= x >>> 12; x = Math.imul(x, 0x297a2d39); x ^= x >>> 15; return x >>> 0; };
-function elfSVG(seed) {
-  const n = hashN(seed), hat = HATS[n % HATS.length], tun = TUNICS[(n >>> 3) % TUNICS.length], skin = SKINS[(n >>> 6) % SKINS.length];
+const HAIRS = ['#2E2A26', '#6B4434', '#B5521F', '#E2B452'];
+const ACCS = [['none', 'Nothing'], ['scarf', 'Scarf'], ['glasses', 'Glasses'], ['bow', 'Bow']];
+// a look comes from the shared database, so only palette values are ever used
+function elfLook(seed, look) {
+  const n = hashN(seed), L = look && typeof look === 'object' ? look : {};
+  const pick = (v, list, d) => list.includes(v) ? v : d;
+  return {
+    g: L.g === 'f' || L.g === 'm' ? L.g : ((n >>> 12) % 2 ? 'f' : 'm'),
+    hat: pick(L.hat, HATS, HATS[n % HATS.length]), tun: pick(L.tun, TUNICS, TUNICS[(n >>> 3) % TUNICS.length]),
+    skin: pick(L.skin, SKINS, SKINS[(n >>> 6) % SKINS.length]), hair: pick(L.hair, HAIRS, HAIRS[(n >>> 9) % HAIRS.length]),
+    acc: pick(L.acc, ACCS.map(a => a[0]), 'none'),
+  };
+}
+function elfSVG(seed, look) {
+  const { g, hat, tun, skin, hair, acc } = elfLook(seed, look), girl = g === 'f';
+  const body = girl
+    ? `<path d="M17 41 h26 l2 12 h-30 z" fill="${tun}"/><path d="M15 52 h30 l9 17 h-48 z" fill="${tun}"/><path d="M6.5 69 h47" stroke="#fff" stroke-width="3" stroke-linecap="round"/><rect x="15.5" y="51" width="29" height="3" rx="1.5" fill="#fff"/>`
+    : `<path d="M17 41 h26 l6 25 h-38 z" fill="${tun}"/><path d="M11 65 H49 L46 70 L42 65 L38 70 L34 65 L30 70 L26 65 L22 70 L18 65 L14 70 Z" fill="${tun}"/><rect x="15.5" y="54" width="29" height="4" fill="#2E2A26"/><rect x="27" y="53" width="6" height="6" fill="none" stroke="#E2B452" stroke-width="1.6"/>`;
+  const back = girl ? `<ellipse cx="16.5" cy="37" rx="4" ry="7.5" fill="${hair}"/><ellipse cx="43.5" cy="37" rx="4" ry="7.5" fill="${hair}"/><circle cx="17.5" cy="30.5" r="2" fill="${hat}"/><circle cx="42.5" cy="30.5" r="2" fill="${hat}"/>` : '';
+  const fringe = girl ? `<path d="M19 25 q5 8 11 1 q6 7 11 -1 v-1 h-22z" fill="${hair}"/>` : `<path d="M19.5 25 q3 6 7 1 q3 5 7 0 q3 5 7.5 -1 v-1 h-21.5z" fill="${hair}"/>`;
+  const lashes = girl ? `<path d="M24.6 27.7 l-1.4 -1.1 M35.4 27.7 l1.4 -1.1" stroke="#2E2A26" stroke-width=".9" stroke-linecap="round"/>` : '';
+  const scarf = acc === 'scarf' ? `<path d="M17.5 40 q12.5 7 25 0 l1 4.5 q-13.5 7 -27 0z" fill="${hat}"/><path d="M19 42.6 q11 5.5 22 0" stroke="#fff" stroke-width="1.2" fill="none" stroke-dasharray="2 2"/><rect x="34" y="44" width="5.5" height="13" rx="2" fill="${hat}"/>` : '';
+  const glasses = acc === 'glasses' ? `<g fill="none" stroke="#2E2A26" stroke-width="1.1"><circle cx="26" cy="29" r="3.3"/><circle cx="34" cy="29" r="3.3"/><path d="M29.3 29 h1.4"/></g>` : '';
+  const bow = acc === 'bow' ? `<g transform="translate(22 22)"><path d="M0 0 l-6 -3.5 v7 z M0 0 l6 -3.5 v7 z" fill="#E8553E"/><circle r="1.8" fill="#B83A26"/></g>` : '';
   return `<svg class="elf-svg" viewBox="0 0 60 92" aria-hidden="true">
 <g class="leg-l"><rect x="22" y="63" width="6" height="18" rx="3" fill="#6B4434"/><path d="M14 85 q1 -6 14 -4 v5 h-12 q-3 0 -2 -1z" fill="#2E2A26"/></g>
 <g class="leg-r"><rect x="32" y="63" width="6" height="18" rx="3" fill="#6B4434"/><path d="M46 85 q-1 -6 -14 -4 v5 h12 q3 0 2 -1z" fill="#2E2A26"/></g>
 <g class="arm-l"><rect x="8.5" y="43" width="7" height="17" rx="3.5" fill="${tun}"/><circle cx="12" cy="61" r="3.6" fill="${skin}"/></g>
 <g class="arm-r"><rect x="44.5" y="43" width="7" height="17" rx="3.5" fill="${tun}"/><circle cx="48" cy="61" r="3.6" fill="${skin}"/></g>
-<path d="M17 41 h26 l6 25 h-38 z" fill="${tun}"/>
-<path d="M11 65 H49 L46 70 L42 65 L38 70 L34 65 L30 70 L26 65 L22 70 L18 65 L14 70 Z" fill="${tun}"/>
-<rect x="15.5" y="54" width="29" height="4" fill="#2E2A26"/><rect x="27" y="53" width="6" height="6" fill="none" stroke="#E2B452" stroke-width="1.6"/>
+${body}
 <path d="M17 42 q13 7 26 0" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+${scarf}${back}
 <path d="M19.5 29 l-8 -6 l6 10z" fill="${skin}"/><path d="M40.5 29 l8 -6 l-6 10z" fill="${skin}"/>
-<circle cx="30" cy="30" r="11" fill="${skin}"/>
-<circle cx="26" cy="29" r="1.5" fill="#2E2A26"/><circle cx="34" cy="29" r="1.5" fill="#2E2A26"/>
+<circle cx="30" cy="30" r="11" fill="${skin}"/>${fringe}
+<circle cx="26" cy="29" r="1.5" fill="#2E2A26"/><circle cx="34" cy="29" r="1.5" fill="#2E2A26"/>${lashes}${glasses}
 <circle cx="23.5" cy="33" r="2" fill="#F08F8F" opacity=".7"/><circle cx="36.5" cy="33" r="2" fill="#F08F8F" opacity=".7"/>
 <path d="M27 35 q3 3 6 0" fill="none" stroke="#2E2A26" stroke-width="1.3" stroke-linecap="round"/>
 <path d="M18 24 Q21 6 39 5 Q50 5 53 11 Q47 10 44 14 Q42 19 42 24 Z" fill="${hat}"/>
-<rect x="16.5" y="20.5" width="27" height="5.5" rx="2.75" fill="#fff"/><circle cx="53" cy="11.5" r="4.2" fill="#fff"/>
+<rect x="16.5" y="20.5" width="27" height="5.5" rx="2.75" fill="#fff"/><circle cx="53" cy="11.5" r="4.2" fill="#fff"/>${bow}
 </svg>`;
+}
+// elf builder for the phone: kind (guy/girl), hat, outfit, skin, hair, extra
+function elfBuilder(seed, start, onChange) {
+  const look = { ...elfLook(seed, start) }; let chosen = !!(start && (start.g === 'm' || start.g === 'f'));
+  const box = h('div', 'builder');
+  const preview = h('div', 'preview wave'); box.appendChild(preview);
+  const kindLbl = h('p', 'lbl', 'Your elf'); const kind = h('div', 'kind'); kind.setAttribute('role', 'group'); kind.setAttribute('aria-label', 'Guy or girl elf');
+  const kb = [['m', 'Guy elf'], ['f', 'Girl elf']].map(([v, t]) => {
+    const b = h('button'); b.type = 'button'; const mini = h('span', 'mini'); b.append(mini, h('span', '', t));
+    b.addEventListener('click', () => { look.g = v; chosen = true; paint(); }); kind.appendChild(b); return [v, b, mini];
+  });
+  box.append(kindLbl, kind);
+  const rows = [];
+  const swRow = (label, key, list) => {
+    const r = h('div', 'swrow'); r.appendChild(h('p', 'lbl', label)); const g = h('div', 'sws'); g.setAttribute('role', 'group'); g.setAttribute('aria-label', label);
+    list.forEach((c, i) => { const b = h('button', 'sw'); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', label + ' colour ' + (i + 1)); b.addEventListener('click', () => { look[key] = c; paint(); }); g.appendChild(b); rows.push([key, c, b]); });
+    r.appendChild(g); box.appendChild(r);
+  };
+  swRow('Hat', 'hat', HATS); swRow('Outfit', 'tun', TUNICS); swRow('Skin', 'skin', SKINS); swRow('Hair', 'hair', HAIRS);
+  const ar = h('div', 'swrow'); ar.appendChild(h('p', 'lbl', 'Extra')); const ag = h('div', 'sws');
+  ACCS.forEach(([v, t]) => { const b = h('button', 'acc', t); b.type = 'button'; b.addEventListener('click', () => { look.acc = v; paint(); }); ag.appendChild(b); rows.push(['acc', v, b]); });
+  ar.appendChild(ag); box.appendChild(ar);
+  function paint() {
+    preview.innerHTML = elfSVG(seed, look);
+    kb.forEach(([v, b, mini]) => { b.setAttribute('aria-pressed', chosen && look.g === v); mini.innerHTML = elfSVG(seed, { ...look, g: v }); mini.classList.add('still'); });
+    rows.forEach(([k, v, b]) => b.setAttribute('aria-pressed', look[k] === v));
+    if (onChange) onChange(look);
+  }
+  paint();
+  return { el: box, get look() { return { ...look }; }, get chosen() { return chosen; } };
 }
 const elfLayer = $('#elves'), elfMap = new Map();
 function syncElves(list, { sound = false } = {}) {
@@ -557,10 +620,12 @@ function syncElves(list, { sound = false } = {}) {
       el = h('div', 'elf'); el.style.setProperty('--w', w + 'px'); el.style.setProperty('--a', a + 'px'); el.style.setProperty('--b', b + 'px');
       el.style.setProperty('--d', d + 's'); el.style.setProperty('--dl', (-(n % 1000) / 1000 * d).toFixed(1) + 's');
       const y = 0.6 + ((n >>> 9) % 40) / 10; el.style.setProperty('--y', y + 'vh'); el.style.zIndex = String(100 - Math.round(y * 10));
-      const pop = h('div', 'pop'); const tag = h('span', 'tag'); const flip = h('div', 'flip'); flip.innerHTML = elfSVG(x.seed || x.id);
+      const pop = h('div', 'pop'); const tag = h('span', 'tag'); const flip = h('div', 'flip');
       pop.append(tag, flip); el.appendChild(pop); elfLayer.appendChild(el); elfMap.set(x.id, el);
       if (sound) { el.classList.add('new'); Sound.join(); setTimeout(() => el.classList.remove('new'), 800); }
     }
+    const lk = JSON.stringify(x.look || null), flipEl = el.querySelector('.flip');
+    if (el.dataset.look !== lk) { el.dataset.look = lk; flipEl.innerHTML = elfSVG(x.seed || x.id, x.look); }
     const tag = el.querySelector('.tag');
     tag.hidden = !x.name; tag.textContent = x.name ? x.name + (x.ready ? ' ✓' : '') : ''; tag.classList.toggle('ready', !!x.ready);
   });
@@ -619,7 +684,7 @@ function playerRender() {
     const board = scores(g, (st.qs || []).length - 1), r = rankOf(board, PID);
     if (me && r) {
       const c = h('div', 'card big-msg');
-      const pic = h('div', r <= 3 ? 'cheer' : 'wave'); pic.style.width = '84px'; pic.innerHTML = elfSVG(PID); c.appendChild(pic);
+      const pic = h('div', r <= 3 ? 'cheer' : 'wave'); pic.style.width = '84px'; pic.innerHTML = elfSVG(PID, me.look); c.appendChild(pic);
       if (r <= 3) setTimeout(() => { Confetti.burst(120); }, 400);
       c.appendChild(h('p', 'script', 'You came ' + ordinal(r)));
       c.appendChild(h('p', 'score', board[r - 1].score.toLocaleString() + ' points'));
@@ -636,31 +701,52 @@ function playerRender() {
 }
 
 function joinScreen(w, g) {
-  const top = h('div', 'me-elf'); const pic = h('div', 'pic wave'); pic.innerHTML = elfSVG(PID);
-  const tt = h('div'); tt.append(h('p', 'eyebrow', 'Christmas party game'), h('h1', '', 'Who Wrote This?')); top.append(pic, tt); w.appendChild(top);
+  const top = h('div', 'me-elf'); const tt = h('div'); tt.append(h('p', 'eyebrow', 'Christmas party game'), h('h1', '', 'Who Wrote This?')); top.append(tt); w.appendChild(top);
   w.appendChild(h('p', 'lead', g.st.phase === 'lobby'
-    ? 'Add up to 2 facts or photos about yourself. They get shuffled, and everyone guesses who wrote each one.'
+    ? 'Make your elf, then add up to 2 facts or photos about yourself. Everyone guesses who wrote each one.'
     : 'The game has started, but you can still jump in and guess.'));
   const c = h('form', 'card');
   const lb = h('label', 'lbl', 'Your name'); lb.htmlFor = 'nm';
   const inp = h('input'); inp.type = 'text'; inp.id = 'nm'; inp.maxLength = 24; inp.autocomplete = 'given-name'; inp.value = ls.get('wwt_name') || '';
+  let saved = null; try { saved = JSON.parse(ls.get('wwt_look') || 'null'); } catch (e) {}
+  const builder = elfBuilder(PID, saved);
   const err = h('p', 'err'); err.hidden = true;
   const b = h('button', 'btn', 'Join the game'); b.type = 'submit';
-  c.append(lb, inp, err, b); w.appendChild(c);
+  c.append(lb, inp, builder.el, err, b); w.appendChild(c);
   c.addEventListener('submit', async e => {
     e.preventDefault();
     const name = txt(inp.value).replace(/\s+/g, ' ');
     const gg = game();
-    if (!name) { err.hidden = false; err.textContent = 'Type your name first.'; return; }
+    if (!name) { err.hidden = false; err.textContent = 'Type your name first.'; inp.focus(); return; }
+    if (!builder.chosen) { err.hidden = false; err.textContent = 'Pick a guy elf or a girl elf.'; return; }
     if (gg.players.some(p => p.id !== PID && txt(p.name).toLowerCase() === name.toLowerCase())) { err.hidden = false; err.textContent = 'Someone already joined as ' + name + '. Add an initial so people can tell you apart.'; return; }
-    b.disabled = true; ls.set('wwt_name', name);
-    try { await db.set('wwt-player/' + PID, { gid: gg.gid, name, ready: false, t: Date.now() }); }
+    b.disabled = true; ls.set('wwt_name', name); ls.set('wwt_look', JSON.stringify(builder.look));
+    try { await db.set('wwt-player/' + PID, { gid: gg.gid, name, look: builder.look, ready: false, t: Date.now() }); }
     catch (e2) { b.disabled = false; err.hidden = false; err.textContent = "Couldn't join. Check your connection and try again."; }
   });
 }
 
 function lobbyScreen(w) {
   const head = h('div'); w.appendChild(head);
+  const elfCard = h('div', 'card'); elfCard.hidden = true; w.appendChild(elfCard);
+  let editing = false;
+  const openEditor = () => {
+    const me = game().players.find(p => p.id === PID); if (!me) return;
+    editing = true; elfCard.hidden = false; elfCard.textContent = '';
+    const bld = elfBuilder(PID, me.look);
+    const e2 = h('p', 'err'); e2.hidden = true;
+    const row = h('div', 'row'); const cancel = h('button', 'btn ghost', 'Cancel'); cancel.type = 'button'; const save = h('button', 'btn', 'Save my elf'); save.type = 'button'; row.append(cancel, save);
+    elfCard.append(bld.el, e2, row);
+    cancel.addEventListener('click', () => { editing = false; elfCard.hidden = true; update(); });
+    save.addEventListener('click', async () => {
+      if (!bld.chosen) { e2.hidden = false; e2.textContent = 'Pick a guy elf or a girl elf.'; return; }
+      save.disabled = true; const cur = game().players.find(p => p.id === PID); const { id, ...rest } = cur;
+      ls.set('wwt_look', JSON.stringify(bld.look));
+      try { await db.set('wwt-player/' + PID, { ...rest, look: bld.look }); editing = false; elfCard.hidden = true; update(); }
+      catch (x) { save.disabled = false; e2.hidden = false; e2.textContent = "Couldn't save. Try again."; }
+    });
+    elfCard.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
   const listCard = h('div', 'card'); w.appendChild(listCard);
   const form = h('div', 'card'); w.appendChild(form);
   const foot = h('div', 'row'); w.appendChild(foot);
@@ -781,8 +867,11 @@ function lobbyScreen(w) {
     const g = game(), me = g.players.find(p => p.id === PID); if (!me) return;
     const mine = myEntries(g);
     head.textContent = '';
-    const top = h('div', 'me-elf'); const pic = h('div', 'pic' + (me.ready ? ' cheer' : '')); pic.innerHTML = elfSVG(PID);
-    const tt = h('div'); tt.append(h('p', 'eyebrow', 'Hi ' + txt(me.name) + ', this is your elf on the TV'), h('h1', '', 'Who Wrote This?')); top.append(pic, tt); head.appendChild(top);
+    const top = h('div', 'me-elf'); const pic = h('div', 'pic' + (me.ready ? ' cheer' : '')); pic.innerHTML = elfSVG(PID, me.look);
+    const tt = h('div'); tt.append(h('p', 'eyebrow', 'Hi ' + txt(me.name) + ', this is your elf on the TV'), h('h1', '', 'Who Wrote This?'));
+    const ch = h('button', 'btn quiet', 'Change my elf'); ch.type = 'button'; ch.style.alignSelf = 'flex-start'; ch.style.paddingLeft = '0'; ch.hidden = editing; ch.addEventListener('click', openEditor); tt.appendChild(ch);
+    top.append(pic, tt); head.appendChild(top);
+    if (!(me.look && (me.look.g === 'm' || me.look.g === 'f')) && !editing) setTimeout(openEditor, 0);
     head.appendChild(h('p', 'lead', 'Add up to 2 facts or photos about yourself. Nobody sees who wrote them until the reveal.'));
     listCard.textContent = '';
     listCard.appendChild(h('p', 'lbl', 'Yours (' + mine.length + ' of ' + MAX_ENTRIES + ')'));
@@ -946,7 +1035,7 @@ function hostLobby(w) {
   let first = true;
   function update() {
     const g = game();
-    syncElves(g.players.map(p => ({ id: p.id, name: txt(p.name), ready: !!p.ready })), { sound: !first }); first = false;
+    syncElves(g.players.map(p => ({ id: p.id, name: txt(p.name), ready: !!p.ready, look: p.look })), { sound: !first }); first = false;
     lim.value = String(g.st.limit || 20);
     maxq.value = g.st.maxq ? String(g.st.maxq) : 'all';
     const nQ = g.st.maxq ? Math.min(g.st.maxq, g.entries.length) : g.entries.length;
@@ -989,7 +1078,13 @@ async function startGame(btn) {
     const j = es.findIndex((e, k) => k > i && e.pid !== es[i - 1].pid);
     if (j > 0) [es[i], es[j]] = [es[j], es[i]];
   }
-  const qs = es.map(e => ({ e: e.id, a: e.pid, o: shuffle([e.pid, ...shuffle(ids.filter(x => x !== e.pid)).slice(0, 3)]) }));
+  const kindOf = id => { const p = g.players.find(x => x.id === id), k = p && p.look && p.look.g; return k === 'm' || k === 'f' ? k : null; };
+  const decoys = pid => {
+    const others = ids.filter(x => x !== pid), k = kindOf(pid);
+    const same = k ? shuffle(others.filter(x => kindOf(x) === k)) : [];
+    return [...same, ...shuffle(others.filter(x => !same.includes(x)))].slice(0, 3);
+  };
+  const qs = es.map(e => ({ e: e.id, a: e.pid, o: shuffle([e.pid, ...decoys(e.pid)]) }));
   if (!qs.length) return;
   btn.disabled = true;
   try { await db.set('wwt-state/main', { ...g.st, phase: 'play', qi: 0, qs, at: Date.now() }); } catch (e) { btn.disabled = false; }
@@ -1099,7 +1194,7 @@ function hostDone(w) {
     col.style.setProperty('--dl', (first ? FIRST : 0.4 + Math.min(1.6, (place - 2) * 0.18)) + 's');
     const who = h('div', 'who');
     if (first) { who.appendChild(h('div', 'rays')); who.appendChild(h('div', 'star', '★')); }
-    const e = h('div', 'elfstand ' + (first ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id); who.appendChild(e);
+    const e = h('div', 'elfstand ' + (first ? 'cheer' : 'wave')); e.innerHTML = elfSVG(r.id, (g.players.find(p => p.id === r.id) || {}).look); who.appendChild(e);
     who.append(h('p', 'nm', r.name), h('p', 'pts', r.score.toLocaleString() + (crowd && !first ? '' : ' pts')));
     col.append(who, h('div', 'blk', first ? '1st' : '')); pod.appendChild(col);
   });
