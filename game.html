@@ -1010,7 +1010,7 @@ function hostLobby(w) {
     const qr = qrcode(0, 'M'); qr.addData(joinUrl); qr.make();
     qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }).replace(/<rect[^>]*fill="white"[^>]*\/?>/g, '').replace(/fill="black"/g, 'fill="#1F3A36"');
   } catch (e) {}
-  left.append(qrBox, h('p', 'joinurl', joinUrl.replace(/^https?:\/\//, '')));
+  left.append(qrBox);
   grid.appendChild(left);
   const right = h('div', 'card'); grid.appendChild(right);
   const counts = h('p', 'lbl'), players = h('div', 'players');
