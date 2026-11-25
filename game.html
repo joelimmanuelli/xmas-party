@@ -1440,7 +1440,14 @@ document.addEventListener('keydown', e => {
 
 /* ---------- go ---------- */
 const render = () => { try { (HOST ? hostRender : playerRender)(); } catch (e) { console.error(e); } };
-let rq = false; db.onChange(() => { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); });
+// redraw on the next frame, or within 150ms if frames are paused (a background tab), so the screen
+// is already right the moment someone looks at it
+let rq = false;
+db.onChange(() => {
+  if (rq) return; rq = true;
+  let done = false; const go = () => { if (done) return; done = true; rq = false; render(); };
+  requestAnimationFrame(go); setTimeout(go, 150);
+});
 setTimeout(() => { if (!db.loaded) setStatus("Can't reach the game yet. Keep this page open; it keeps trying.", true); }, 10000);
 db.start();
 })();
