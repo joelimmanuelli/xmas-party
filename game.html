@@ -129,13 +129,13 @@ textarea{resize:vertical;min-height:90px}
 .reveal-who{text-align:center}
 .reveal-who .script{font-size:clamp(2.6rem,8vmin,6.5rem)}
 /* reveal on the TV: the right answer pops, the others fade away, the leaderboard slides in */
-@keyframes revPop{0%{transform:none}40%{transform:scale(1.14)}100%{transform:translate(var(--dx,0),var(--dy,0)) scale(1.12)}}
+@keyframes revPop{from{transform:none}to{transform:translate(var(--dx,0),var(--dy,0)) scale(1.12)}}
 @keyframes revFade{to{opacity:0;transform:scale(.86)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(115%)}to{opacity:1;transform:none}}
 body.tv{overflow-x:hidden}
 .tv .opts.reveal .opt{transform-origin:50% 50%}
 .tv .opts.reveal .opt.right{position:relative;z-index:1}
-.tv .opts.reveal.anim .opt.right{animation:revPop 1s cubic-bezier(.3,.9,.3,1.1) .25s both}
+.tv .opts.reveal.anim .opt.right{animation:revPop .9s cubic-bezier(.34,1.25,.5,1) .2s both}
 .tv .opts.reveal.anim .opt:not(.right){animation:revFade .55s ease .15s forwards}
 .tv .opts.reveal.settled .opt.right{transform:translate(var(--dx,0),var(--dy,0)) scale(1.12)}
 .tv .opts.reveal.settled .opt:not(.right){opacity:0}
