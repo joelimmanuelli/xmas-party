@@ -542,8 +542,8 @@ function optionGrid(g, q, { pick, picked, reveal, counts, label }) {
 function timerBar() { const t = h('div', 'timer'); t.appendChild(h('i')); return t; }
 
 /* ---------- the opening: baby Jesus, before anyone adds a photo ----------
-   KJV text (public domain). Flow: Start a new game -> intro (TV message) -> lobby (QR code) -> play.
-   Play again and Clear and start over go straight to the lobby. */
+   KJV text (public domain). Flow: opening page (no game, or phase intro) -> lobby (QR code) -> play.
+   The TV opens on it; the right arrow brings up the QR code. Clear and start over comes back here; Play again skips it. */
 const VERSE_INTRO = { t: 'For unto you is born this day in the city of David a Saviour, which is Christ the Lord. And this shall be a sign unto you; Ye shall find the babe wrapped in swaddling clothes, lying in a manger.', ref: 'Luke 2:11–12' };
 function verseView(v) { const b = h('blockquote', 'verse'); b.appendChild(h('p', '', '“' + v.t + '”')); b.appendChild(h('cite', '', v.ref)); return b; }
 // the nativity line drawing Joel supplied, traced to a vector so it stays sharp on a big TV
@@ -1170,13 +1170,10 @@ function hostRender() {
   Sound.showButton(true);
   const phase = !st || st.phase === 'off' ? 'start' : st.phase;
   document.body.dataset.screen = phase;
-  setScene(phase === 'start' || phase === 'lobby' || phase === 'done' ? 'full' : 'none');
+  setScene(phase === 'lobby' || phase === 'done' ? 'full' : 'none');
   if (phase !== 'done') Confetti.rain(false);
-  if (phase === 'start') {
-    syncElves(['e1', 'e2', 'e3', 'e4', 'e5'].map(id => ({ id: 'decor-' + id })));
-    Sound.theme('lobby');
-    return show('start', w => hostStart(w));
-  }
+  // the TV opens on the baby Jesus page; the right arrow then brings up the QR code
+  if (phase === 'start') { syncElves([]); Sound.theme(null); return show('in-start', w => hostIntro(w)); }
   if (phase === 'intro') { syncElves([]); Sound.theme(null); return show('in-' + st.gid, w => hostIntro(w)); }
   if (phase === 'lobby') { Sound.theme('lobby'); return show('lobby-' + st.gid, w => hostLobby(w)); }
   if (phase === 'done') { syncElves([]); return show('done-' + st.gid + boardSig(g), w => hostDone(w)); }
@@ -1184,20 +1181,6 @@ function hostRender() {
   const q = (st.qs || [])[st.qi]; if (!q) return;
   if (st.phase === 'play') return show('q-' + st.gid + '-' + st.qi, w => hostQuestion(w, q));
   if (st.phase === 'reveal') return show('r-' + st.gid + '-' + st.qi, w => hostReveal(w, q));
-}
-
-function hostStart(w) {
-  const hero = h('div', 'hero');
-  hero.append(h('p', 'eyebrow', 'Christmas party game'), h('h1', '', 'Who Wrote This?'));
-  hero.appendChild(h('p', 'lead', 'Everyone sneaks in a baby or kid photo of themselves. Then we guess whose baby is whose.'));
-  const steps = h('div', 'steps3');
-  [['Join', 'Scan the code on the TV with your phone and pick a name.'], ['Sneak in', 'Add a baby or kid photo of yourself. Keep it secret!'], ['Guess', 'Pick whose baby it is from 4 names. Faster right answers score more.']]
-    .forEach(([t, d], i) => { const s = h('div', 'step'); s.append(h('span', 'n', String(i + 1)), h('p', '', t), h('p', 'muted', d)); steps.appendChild(s); });
-  hero.appendChild(steps);
-  const b = h('button', 'btn huge', 'Start a new game'); b.type = 'button';
-  b.addEventListener('click', () => { Sound.unlock(); newGame(b, 'intro'); });
-  hero.appendChild(b);
-  w.appendChild(hero);
 }
 
 async function newGame(btn, phase = 'lobby') {
@@ -1243,7 +1226,7 @@ function hostLobby(w) {
   maxq.addEventListener('change', () => { const st = game().st; db.set(STATE, { ...st, maxq: maxq.value === 'all' ? 0 : Number(maxq.value) }).catch(() => {}); });
   resetB.addEventListener('click', () => {
     if (armed !== 'reset') { armed = 'reset'; resetB.textContent = 'Tap again to clear everyone'; setTimeout(() => { if (armed === 'reset') { armed = ''; resetB.textContent = 'Clear and start over'; } }, 3500); return; }
-    armed = ''; newGame(resetB);
+    armed = ''; newGame(resetB, 'intro');
   });
   startB.addEventListener('click', () => startGame(startB));
   let first = true;
@@ -1443,12 +1426,17 @@ function hostDone(w) {
   setTimeout(() => { if (!document.contains(pod)) return; Sound.fanfare(); Confetti.burst(220); Confetti.rain(true); setTimeout(() => { if (document.contains(pod)) Sound.theme('done'); }, 2400); }, (FIRST + 0.3) * 1000);
 }
 
+let opening = false;
 document.addEventListener('keydown', e => {
   if (!HOST || e.target.matches('input,textarea,select')) return;
   if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter' || e.key === 'PageDown') {
     const st = (game().st || {});
     if (st.phase === 'reveal' && !e.target.matches('button')) { e.preventDefault(); advance(); }
-    else if (st.phase === 'intro' && !e.target.matches('button')) { e.preventDefault(); goPhase(null, 'intro', { phase: 'lobby' }); }
+    else if ((!st.phase || st.phase === 'off' || st.phase === 'intro') && !e.target.matches('button')) {
+      e.preventDefault(); Sound.unlock();
+      if (st.phase === 'intro') goPhase(null, 'intro', { phase: 'lobby' });
+      else if (!opening) { opening = true; newGame(null, 'lobby').finally(() => { opening = false; }); }
+    }
   }
 });
 
