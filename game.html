@@ -1312,10 +1312,9 @@ function hostIntro(w) {
   c.appendChild(mangerView());
   c.appendChild(verseView(VERSE_INTRO));
   c.appendChild(h('p', 'lead', 'God didn’t come as a king in a palace. He came as a baby, just like us. So tonight, let’s see what we all looked like as babies.'));
-  const b = h('button', 'btn huge', 'Let’s play'); b.type = 'button';
-  b.addEventListener('click', () => goPhase(b, 'intro', { phase: 'lobby' }));
-  c.appendChild(b); w.appendChild(c);
-  b.focus({ preventScroll: true });
+  // no button: the host moves on with the right arrow key (or a presenter clicker), like slides
+  w.appendChild(c);
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
 }
 
 function hostQuestion(w, q) {
@@ -1446,7 +1445,7 @@ function hostDone(w) {
 
 document.addEventListener('keydown', e => {
   if (!HOST || e.target.matches('input,textarea,select')) return;
-  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter' || e.key === 'PageDown') {
     const st = (game().st || {});
     if (st.phase === 'reveal' && !e.target.matches('button')) { e.preventDefault(); advance(); }
     else if (st.phase === 'intro' && !e.target.matches('button')) { e.preventDefault(); goPhase(null, 'intro', { phase: 'lobby' }); }
