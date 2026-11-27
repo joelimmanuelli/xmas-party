@@ -88,6 +88,18 @@ textarea{resize:vertical;min-height:90px}
 .opts.reveal .opt:not(.right){opacity:.28}
 .opt.right{outline:4px solid var(--good);outline-offset:3px}
 .opt .n{margin-left:auto;padding-left:10px;font-size:1.3em;font-variant-numeric:tabular-nums}
+.intro{display:flex;flex-direction:column;align-items:center;text-align:center;gap:clamp(10px,2.2vmin,24px);max-width:1000px;margin:0 auto}
+.intro .lead{margin:0}
+.intro .btn,.intro .btn.huge{align-self:center;margin-left:auto;margin-right:auto}
+.tv .intro .lead{font-size:clamp(1.1rem,3vmin,2rem)}
+.tv .intro .lead.big{font-family:var(--script);color:var(--coral);font-size:clamp(2rem,7vmin,4.6rem);line-height:1}
+.verse{margin:0;max-width:900px;text-align:center;font-style:italic;font-size:1.05rem;line-height:1.45}
+.verse p{margin:0}
+.verse cite{display:block;margin-top:.5em;font-style:normal;font-weight:700;font-size:.8em;letter-spacing:.04em}
+.tv .verse{font-size:clamp(1.1rem,3.2vmin,2.2rem)}
+.manger{display:flex;justify-content:center}
+.manger svg{height:120px;width:auto}
+.tv .manger svg{height:clamp(90px,20vh,220px)}
 .big-msg{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:18px 8px}
 .big-msg .script{font-size:2.6rem}
 .score{font-variant-numeric:tabular-nums;font-weight:700}
@@ -272,7 +284,7 @@ const txt = v => (v == null ? '' : String(v)).trim();
 const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const HOST = location.hash === '#host';
-const MAX_ENTRIES = 2, MAX_CHARS = 160;
+const MAX_ENTRIES = 1, MAX_CHARS = 160;  // one baby photo each
 if (HOST) document.body.classList.add('tv');
 
 /* ---------- local identity ---------- */
@@ -513,11 +525,11 @@ function factView(entry) {
   else box.appendChild(h('p', 'fact', entry ? txt(entry.text) : ''));
   return box;
 }
-function optionGrid(g, q, { pick, picked, reveal, counts }) {
+function optionGrid(g, q, { pick, picked, reveal, counts, label }) {
   const grid = h('div', 'opts' + (reveal ? ' reveal' : picked ? ' locked' : ''));
   q.o.forEach((pid, i) => {
     const b = h('button', 'opt c' + i); b.type = 'button';
-    b.appendChild(h('span', '', nameOf(g, pid)));
+    b.appendChild(h('span', '', label ? label(pid) : nameOf(g, pid)));
     if (counts) b.appendChild(h('span', 'n', String(counts[pid] || 0)));
     if (reveal && pid === q.a) b.classList.add('right');
     if (picked === pid) b.classList.add('picked');
@@ -529,7 +541,39 @@ function optionGrid(g, q, { pick, picked, reveal, counts }) {
 }
 function timerBar() { const t = h('div', 'timer'); t.appendChild(h('i')); return t; }
 
-const askText = e => e && e.kind === 'photo' ? (txt(e.ask) || 'Whose photo is this?') : 'Who wrote this?';
+/* ---------- the opening: baby Jesus, before anyone adds a photo ----------
+   KJV text (public domain). Flow: Start a new game -> intro (TV message) -> lobby (QR code) -> play.
+   Play again and Clear and start over go straight to the lobby. */
+const VERSE_INTRO = { t: 'For unto you is born this day in the city of David a Saviour, which is Christ the Lord. And this shall be a sign unto you; Ye shall find the babe wrapped in swaddling clothes, lying in a manger.', ref: 'Luke 2:11–12' };
+function verseView(v) { const b = h('blockquote', 'verse'); b.appendChild(h('p', '', '“' + v.t + '”')); b.appendChild(h('cite', '', v.ref)); return b; }
+function mangerView() {
+  const d = h('div', 'manger');
+  d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'A baby wrapped in cloth, lying in a manger under a star');
+  d.innerHTML = '<svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">'
+    + '<circle cx="120" cy="118" r="78" fill="#F7D98B" opacity=".35"/>'
+    + '<g transform="translate(120 30)"><path d="M0-22 6-7 22-6 9 4 13 20 0 11-13 20-9 4-22-6-6-7Z" fill="#F2B632" stroke="#C98A12" stroke-width="2" stroke-linejoin="round"/>'
+    + '<path d="M0-34V-28M0 28V34M-34 0H-28M28 0H34" stroke="#F2B632" stroke-width="3" stroke-linecap="round"/></g>'
+    + '<path d="M58 182 92 132M182 182 148 132M64 182 98 132M176 182 142 132" stroke="#7A4A2C" stroke-width="6" stroke-linecap="round"/>'
+    + '<path d="M50 112h140l-16 34H66Z" fill="#9A6038" stroke="#6E3F22" stroke-width="3" stroke-linejoin="round"/>'
+    + '<path d="M62 124h116M70 136h100" stroke="#6E3F22" stroke-width="2" opacity=".5"/>'
+    + '<path d="M46 113c10-10 20-4 28-9s16-6 24 0 18-6 26-2 18-6 26 1 16-4 24 2 12 1 20 7" fill="none" stroke="#E7B84A" stroke-width="5" stroke-linecap="round"/>'
+    + '<ellipse cx="122" cy="102" rx="46" ry="17" fill="#FFF7EC" stroke="#D8C7B0" stroke-width="2.5"/>'
+    + '<path d="M96 96c14 6 34 7 52 2M100 108c14 4 30 4 44 0" stroke="#D8C7B0" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="86" cy="96" r="14" fill="#F2C9A5" stroke="#B9876A" stroke-width="2"/>'
+    + '<path d="M80 95q2-2 4 0M88 95q2-2 4 0" stroke="#6B4636" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+    + '<path d="M83 101q3 2 6 0" stroke="#6B4636" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="80" cy="100" r="2.2" fill="#F0A0A0" opacity=".7"/><circle cx="93" cy="100" r="2.2" fill="#F0A0A0" opacity=".7"/>'
+    + '<path d="M73 92c2-10 18-14 25-4" fill="#FFF7EC" stroke="#D8C7B0" stroke-width="2"/>'
+    + '</svg>';
+  return d;
+}
+async function goPhase(btn, from, next) {
+  const s = game().st; if (!s || s.phase !== from) return;
+  if (btn) btn.disabled = true;
+  try { await db.set(STATE, { ...s, ...next, at: Date.now() }); } catch (e) { if (btn) btn.disabled = false; }
+}
+
+const askText = e => e && e.kind === 'photo' ? (txt(e.ask) || 'Whose baby photo is this?') : 'Who wrote this?';
 const revealLabel = e => e && e.kind === 'photo' ? 'It’s' : 'Written by';
 
 /* ---------- sound: synthesised in the browser, carols are public domain ---------- */
@@ -795,21 +839,23 @@ function fitSoon() { cancelAnimationFrame(fitT); fitT = requestAnimationFrame(fi
 function fitTV() {
   const w = app.firstElementChild;
   if (!w) return;
-  const els = [...w.querySelectorAll('.photo-box img, .fact, .opt, .ask')];
+  const els = [...w.querySelectorAll('.photo-box img, .manger svg, .fact, .verse, .reveal-who .script, .opt, .ask')];
   els.forEach(e => { e.style.height = e.style.fontSize = e.style.minHeight = e.style.minWidth = ''; });
   // the TV fits its question and answer screens; a phone fits its question screen so the
   // answer buttons are there without scrolling
-  if (!(screenKey.startsWith('q-') || (HOST && screenKey.startsWith('r-')))) return;
+  if (!(screenKey.startsWith('q-') || (HOST && (screenKey.startsWith('r-') || screenKey.startsWith('in-'))))) return;
   const over = () => {
     let bottom = 0;
-    for (const c of w.querySelectorAll('.qhead, .timer, .photo-box, .fact, .ask, .opts, .hostbar, .board, .reveal-who'))
+    for (const c of w.querySelectorAll('.qhead, .timer, .photo-box, .manger, .fact, .verse, .lead, .ask, .opts, .hostbar, .board, .reveal-who, .intro .btn'))
       bottom = Math.max(bottom, c.getBoundingClientRect().bottom);
     return bottom + 10 - innerHeight;
   };
-  const img = w.querySelector('.photo-box img'), fact = w.querySelector('.fact'), opts = [...w.querySelectorAll('.opt')], ask = w.querySelector('.ask');
+  const img = w.querySelector('.photo-box img') || w.querySelector('.manger svg'), fact = w.querySelector('.fact') || w.querySelector('.verse'), who = w.querySelector('.reveal-who .script'), opts = [...w.querySelectorAll('.opt')], ask = w.querySelector('.ask');
   for (let i = 0, o = over(); o > 0 && i < 40; i++, o = over()) {
     if (img && img.getBoundingClientRect().height > innerHeight * 0.18) {
       img.style.minWidth = '0'; img.style.height = Math.max(innerHeight * 0.18, img.getBoundingClientRect().height - o - 2) + 'px';
+    } else if (who && parseFloat(getComputedStyle(who).fontSize) > 34) {
+      who.style.fontSize = parseFloat(getComputedStyle(who).fontSize) * 0.85 + 'px';
     } else if (fact && parseFloat(getComputedStyle(fact).fontSize) > 15) {
       fact.style.fontSize = parseFloat(getComputedStyle(fact).fontSize) * 0.9 + 'px';
     } else if (opts.length && parseFloat(getComputedStyle(opts[0]).fontSize) > 15) {
@@ -846,6 +892,13 @@ function playerRender() {
     }
     w.appendChild(h('p', 'muted', 'Check the TV for the winners.'));
   });
+  if (st.phase === 'intro') return show('in-' + st.gid, w => {
+    w.appendChild(h('p', 'eyebrow', 'Christmas party game'));
+    const c = h('div', 'card big-msg');
+    c.appendChild(mangerView());
+    c.append(h('p', 'script', 'Look at the TV'), h('p', 'lead', 'A quick word first. You’ll add your baby photo right after.'));
+    w.appendChild(c);
+  });
   if (!me) return show('join-' + st.gid, w => joinScreen(w, g));
   if (st.phase === 'lobby') return show('lobby-' + st.gid, w => lobbyScreen(w));
   const q = (st.qs || [])[st.qi];
@@ -857,7 +910,7 @@ function playerRender() {
 function joinScreen(w, g) {
   const top = h('div', 'me-elf'); const tt = h('div'); tt.append(h('p', 'eyebrow', 'Christmas party game'), h('h1', '', 'Who Wrote This?')); top.append(tt); w.appendChild(top);
   w.appendChild(h('p', 'lead', g.st.phase === 'lobby'
-    ? 'Make your elf, then add up to 2 facts or photos about yourself. Everyone guesses who wrote each one.'
+    ? 'Jesus was a baby once, and so were we. Make your elf, then add a baby or kid photo of yourself. Everyone guesses whose baby is whose.'
     : 'The game has started, but you can still jump in and guess.'));
   const c = h('form', 'card');
   const lb = h('label', 'lbl', 'Your name'); lb.htmlFor = 'nm';
@@ -904,7 +957,7 @@ function lobbyScreen(w) {
   const listCard = h('div', 'card'); w.appendChild(listCard);
   const form = h('div', 'card'); w.appendChild(form);
   const foot = h('div', 'row'); w.appendChild(foot);
-  let mode = 'text', busy = false;
+  let mode = 'photo', busy = false;
 
   // add form (built once so typing survives updates)
   const seg = h('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Fact or photo');
@@ -915,7 +968,7 @@ function lobbyScreen(w) {
   const cnt = h('p', 'count', '0 / ' + MAX_CHARS);
   const file = h('input'); file.type = 'file'; file.accept = 'image/*'; file.id = 'photo'; file.hidden = true;
   const pickBtn = h('button', 'btn ghost', 'Choose a photo'); pickBtn.type = 'button';
-  const photoHint = h('p', 'muted', 'A baby or kid photo works great. It only shows during the game.');
+  const photoHint = h('p', 'muted', 'A baby or kid photo of you. It only shows during the game, and nobody sees it’s yours until the reveal.');
   const err = h('p', 'err'); err.hidden = true;
   const save = h('button', 'btn', 'Add it'); save.type = 'button';
   form.append(seg, ta, cnt, pickBtn, photoHint, file, err, save);
@@ -925,12 +978,12 @@ function lobbyScreen(w) {
   };
   bt.addEventListener('click', () => setMode('text')); bp.addEventListener('click', () => setMode('photo'));
   ta.addEventListener('input', () => { cnt.textContent = ta.value.length + ' / ' + MAX_CHARS; });
-  setMode('text');
+  setMode('photo'); seg.hidden = true;  // photos only now: no fact box
   const fail = m => { err.hidden = false; err.textContent = m; };
   save.addEventListener('click', async () => {
     const g = game(), text = txt(ta.value);
     if (!text) return fail('Write something first.');
-    if (myEntries(g).length >= MAX_ENTRIES) return fail('You already have 2. Remove one to add another.');
+    if (myEntries(g).length >= MAX_ENTRIES) return fail('You’ve already added your photo.');
     busy = true; save.disabled = true;
     // clear the box straight away, so anything typed while this saves is kept
     ta.value = ''; cnt.textContent = '0 / ' + MAX_CHARS; err.hidden = true;
@@ -947,15 +1000,15 @@ function lobbyScreen(w) {
   const frame = h('div', 'crop-frame'); const cimg = h('img'); cimg.alt = 'Photo to crop'; frame.appendChild(cimg);
   const zoom = h('input'); zoom.type = 'range'; zoom.min = '1'; zoom.max = '4'; zoom.step = '0.01'; zoom.value = '1'; zoom.id = 'zoom'; zoom.setAttribute('aria-label', 'Zoom');
   const cropHint = h('p', 'muted', 'Drag to move. Pinch or slide to zoom.');
-  const askLbl = h('label', 'lbl', 'Question to show with it'); askLbl.htmlFor = 'ask';
-  const askIn = h('input'); askIn.type = 'text'; askIn.id = 'ask'; askIn.maxLength = 80; askIn.placeholder = 'Whose photo is this?';
+  const askLbl = h('label', 'lbl', 'Question to show with it (optional)'); askLbl.htmlFor = 'ask';
+  const askIn = h('input'); askIn.type = 'text'; askIn.id = 'ask'; askIn.maxLength = 80; askIn.placeholder = 'Whose baby photo is this?';
   const cropErr = h('p', 'err'); cropErr.hidden = true;
   const cropRow = h('div', 'row'); const cancel = h('button', 'btn ghost', 'Cancel'); cancel.type = 'button'; const addP = h('button', 'btn', 'Add photo'); addP.type = 'button';
   cropRow.append(cancel, addP);
   crop.append(aspSeg, frame, zoom, cropHint, askLbl, askIn, cropErr, cropRow);
   form.insertBefore(crop, err);
   const C = { nw: 0, nh: 0, aw: 1, ah: 1, z: 1, tx: 0, ty: 0, W: 0, H: 0, s0: 1, url: '' };
-  const cropping = v => { crop.hidden = !v; seg.hidden = pickBtn.hidden = photoHint.hidden = v; if (!v) setMode(mode); };
+  const cropping = v => { crop.hidden = !v; pickBtn.hidden = photoHint.hidden = v; if (!v) setMode(mode); seg.hidden = true; };
   function layout(keepCenter) {
     const cxRel = keepCenter && C.W ? (C.W / 2 - C.tx) / (C.s0 * C.z) : null, cyRel = keepCenter && C.H ? (C.H / 2 - C.ty) / (C.s0 * C.z) : null;
     frame.style.aspectRatio = C.aw + ' / ' + C.ah;
@@ -989,7 +1042,7 @@ function lobbyScreen(w) {
   file.addEventListener('change', async () => {
     const f = file.files && file.files[0]; file.value = '';
     if (!f) return;
-    if (myEntries(game()).length >= MAX_ENTRIES) return fail('You already have 2. Remove one to add another.');
+    if (myEntries(game()).length >= MAX_ENTRIES) return fail('You’ve already added your photo. Remove it to pick a different one.');
     if (C.url) URL.revokeObjectURL(C.url);
     C.url = URL.createObjectURL(f);
     try {
@@ -1002,7 +1055,7 @@ function lobbyScreen(w) {
   cancel.addEventListener('click', () => { cropping(false); if (C.url) { URL.revokeObjectURL(C.url); C.url = ''; } });
   addP.addEventListener('click', async () => {
     const g = game();
-    if (myEntries(g).length >= MAX_ENTRIES) { cropErr.hidden = false; cropErr.textContent = 'You already have 2. Remove one to add another.'; return; }
+    if (myEntries(g).length >= MAX_ENTRIES) { cropErr.hidden = false; cropErr.textContent = 'You’ve already added your photo. Remove it to pick a different one.'; return; }
     busy = true; addP.disabled = true; addP.textContent = 'Uploading…';
     try {
       const s = C.s0 * C.z, outW = C.aw >= C.ah ? 1000 : Math.round(1000 * C.aw / C.ah), outH = Math.round(outW * C.ah / C.aw);
@@ -1032,10 +1085,10 @@ function lobbyScreen(w) {
     const ch = h('button', 'btn quiet', 'Change my elf'); ch.type = 'button'; ch.style.alignSelf = 'flex-start'; ch.style.paddingLeft = '0'; ch.hidden = editing; ch.addEventListener('click', openEditor); tt.appendChild(ch);
     top.append(pic, tt); head.appendChild(top);
     if (!(me.look && (me.look.g === 'm' || me.look.g === 'f')) && !editing) setTimeout(openEditor, 0);
-    head.appendChild(h('p', 'lead', 'Add up to 2 facts or photos about yourself. Nobody sees who wrote them until the reveal.'));
+    head.appendChild(h('p', 'lead', 'Add a baby or kid photo of yourself. Nobody sees it’s yours until the reveal.'));
     listCard.textContent = '';
-    listCard.appendChild(h('p', 'lbl', 'Yours (' + mine.length + ' of ' + MAX_ENTRIES + ')'));
-    if (!mine.length) listCard.appendChild(h('p', 'muted', 'Nothing yet. You can add 1 or 2.'));
+    listCard.appendChild(h('p', 'lbl', 'Your photo'));
+    if (!mine.length) listCard.appendChild(h('p', 'muted', 'Not added yet.'));
     mine.forEach((e, i) => {
       const row = h('div', 'entry'); row.appendChild(h('span', 'slot-n', String(i + 1)));
       if (e.kind === 'photo') { const im = h('img'); im.alt = 'Your photo'; db.getPhoto(e.photo).then(d => { if (d) im.src = d; }); row.appendChild(im); const tx = h('span', 'txt', 'Photo'); tx.appendChild(h('span', 'sub', askText(e))); row.appendChild(tx); }
@@ -1051,7 +1104,7 @@ function lobbyScreen(w) {
     rb.disabled = !mine.length && !ready;
     rb.addEventListener('click', () => { rb.disabled = true; const { id, ...rest } = me; db.set(db.gp('player') + PID, { ...rest, ready: !ready }).catch(() => { rb.disabled = false; }); });
     foot.appendChild(rb);
-    foot.appendChild(h('p', 'muted', ready ? 'Waiting for the host to start…' : mine.length ? 'Tap when you’re done.' : 'Add at least 1 to get ready.'));
+    foot.appendChild(h('p', 'muted', ready ? 'Waiting for the host to start…' : mine.length ? 'Tap when you’re done.' : 'Add your photo to get ready.'));
   }
   return { update };
 }
@@ -1138,6 +1191,7 @@ function hostRender() {
     Sound.theme('lobby');
     return show('start', w => hostStart(w));
   }
+  if (phase === 'intro') { syncElves([]); Sound.theme(null); return show('in-' + st.gid, w => hostIntro(w)); }
   if (phase === 'lobby') { Sound.theme('lobby'); return show('lobby-' + st.gid, w => hostLobby(w)); }
   if (phase === 'done') { syncElves([]); return show('done-' + st.gid + boardSig(g), w => hostDone(w)); }
   syncElves([]); Sound.theme(null);
@@ -1149,22 +1203,22 @@ function hostRender() {
 function hostStart(w) {
   const hero = h('div', 'hero');
   hero.append(h('p', 'eyebrow', 'Christmas party game'), h('h1', '', 'Who Wrote This?'));
-  hero.appendChild(h('p', 'lead', 'Everyone sneaks in a fact or a photo about themselves. Then we guess who it belongs to.'));
+  hero.appendChild(h('p', 'lead', 'Everyone sneaks in a baby or kid photo of themselves. Then we guess whose baby is whose.'));
   const steps = h('div', 'steps3');
-  [['Join', 'Scan the code on the TV with your phone and pick a name.'], ['Sneak in', 'Add up to 2 facts or photos about yourself. Keep it secret!'], ['Guess', 'Pick who it belongs to from 4 names. Faster right answers score more.']]
+  [['Join', 'Scan the code on the TV with your phone and pick a name.'], ['Sneak in', 'Add a baby or kid photo of yourself. Keep it secret!'], ['Guess', 'Pick whose baby it is from 4 names. Faster right answers score more.']]
     .forEach(([t, d], i) => { const s = h('div', 'step'); s.append(h('span', 'n', String(i + 1)), h('p', '', t), h('p', 'muted', d)); steps.appendChild(s); });
   hero.appendChild(steps);
   const b = h('button', 'btn huge', 'Start a new game'); b.type = 'button';
-  b.addEventListener('click', () => { Sound.unlock(); newGame(b); });
+  b.addEventListener('click', () => { Sound.unlock(); newGame(b, 'intro'); });
   hero.appendChild(b);
   w.appendChild(hero);
 }
 
-async function newGame(btn) {
+async function newGame(btn, phase = 'lobby') {
   if (btn) btn.disabled = true;
   const gid = rid(), prev = db.get(STATE) || {};
   try {
-    await db.set(STATE, { gid, phase: 'lobby', qi: 0, qs: [], limit: prev.limit || 20, maxq: prev.maxq || 0, at: Date.now() });
+    await db.set(STATE, { gid, phase, qi: 0, qs: [], limit: prev.limit || 20, maxq: prev.maxq || 0, at: Date.now() });
     db.clearPhotosExcept(gid).catch(() => {});
   } catch (e) { if (btn) btn.disabled = false; }
 }
@@ -1215,7 +1269,7 @@ function hostLobby(w) {
     const nQ = g.st.maxq ? Math.min(g.st.maxq, g.entries.length) : g.entries.length;
     est.textContent = nQ ? nQ + (nQ === 1 ? ' question' : ' questions') + ' · about ' + Math.max(1, Math.round(nQ * ((g.st.limit || 20) + 12) / 60)) + ' min' + (g.st.maxq && g.entries.length > g.st.maxq ? ' (everyone gets at least one of theirs in first)' : '') : '';
     const nE = g.entries.length, nR = g.players.filter(p => p.ready).length;
-    counts.textContent = g.players.length + (g.players.length === 1 ? ' player' : ' players') + ' · ' + nE + (nE === 1 ? ' fact or photo' : ' facts and photos') + ' · ' + nR + ' ready';
+    counts.textContent = g.players.length + (g.players.length === 1 ? ' player' : ' players') + ' · ' + nE + (nE === 1 ? ' photo' : ' photos') + ' · ' + nR + ' ready';
     players.textContent = '';
     if (!g.players.length) players.appendChild(h('p', 'muted', 'Waiting for people to join…'));
     g.players.forEach(p => {
@@ -1228,7 +1282,7 @@ function hostLobby(w) {
     });
     const authors = new Set(g.entries.map(e => e.pid));
     startB.disabled = g.players.length < 2 || !g.entries.some(e => g.players.some(p => p.id === e.pid));
-    startB.title = startB.disabled ? 'Needs at least 2 players and 1 fact or photo' : '';
+    startB.title = startB.disabled ? 'Needs at least 2 players and 1 photo' : '';
   }
   return { update };
 }
@@ -1264,6 +1318,18 @@ async function startGame(btn) {
   const qs = es.map(e => ({ e: e.id, a: e.pid, o: shuffle([e.pid, ...decoys(e.pid)]) }));
   if (!qs.length) { btn.disabled = false; return; }
   try { await db.set(STATE, { ...g.st, phase: 'play', qi: 0, qs, at: Date.now() }); } catch (e) { btn.disabled = false; }
+}
+
+function hostIntro(w) {
+  const c = h('div', 'intro');
+  c.append(h('p', 'eyebrow', 'Before we start…'), h('h1', '', 'Every one of us was a baby once.'), h('p', 'lead big', 'So was Jesus.'));
+  c.appendChild(mangerView());
+  c.appendChild(verseView(VERSE_INTRO));
+  c.appendChild(h('p', 'lead', 'God didn’t come as a king in a palace. He came as a baby, just like us. So tonight, let’s see what we all looked like as babies.'));
+  const b = h('button', 'btn huge', 'Let’s play'); b.type = 'button';
+  b.addEventListener('click', () => goPhase(b, 'intro', { phase: 'lobby' }));
+  c.appendChild(b); w.appendChild(c);
+  b.focus({ preventScroll: true });
 }
 
 function hostQuestion(w, q) {
@@ -1357,7 +1423,7 @@ function hostDone(w) {
   const board = scores(g, (st.qs || []).length - 1);
   const head = h('div', 'done-head');
   const tt = h('div'); tt.append(h('p', 'eyebrow', 'Final scores'), h('h1', '', 'And the winner is…'));
-  const again = h('button', 'btn', 'Play again with new facts'); again.type = 'button';
+  const again = h('button', 'btn', 'Play again with new photos'); again.type = 'button';
   head.append(tt, again); w.appendChild(head);
   // 1st in the middle; 2nd, 3rd, 4th… spread out to both sides on one level
   const left = [], right = [];
@@ -1385,7 +1451,7 @@ function hostDone(w) {
   if (!board.length) w.appendChild(h('p', 'lead', 'Nobody played this round.'));
   w.appendChild(pod);
   again.addEventListener('click', () => {
-    if (armed !== 'again') { armed = 'again'; again.textContent = 'Tap again: this clears everyone’s facts'; setTimeout(() => { if (armed === 'again') { armed = ''; again.textContent = 'Play again with new facts'; } }, 3500); return; }
+    if (armed !== 'again') { armed = 'again'; again.textContent = 'Tap again: this clears everyone’s photos'; setTimeout(() => { if (armed === 'again') { armed = ''; again.textContent = 'Play again with new photos'; } }, 3500); return; }
     armed = ''; Confetti.rain(false); newGame(again);
   });
   Sound.theme(null); Sound.drumroll(FIRST);
@@ -1397,6 +1463,7 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
     const st = (game().st || {});
     if (st.phase === 'reveal' && !e.target.matches('button')) { e.preventDefault(); advance(); }
+    else if (st.phase === 'intro' && !e.target.matches('button')) { e.preventDefault(); goPhase(null, 'intro', { phase: 'lobby' }); }
   }
 });
 
