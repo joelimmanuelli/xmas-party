@@ -69,6 +69,7 @@ textarea{resize:vertical;min-height:90px}
 .fact{background:#fff;border-radius:18px;padding:18px 20px;font-size:1.25rem;font-weight:600;line-height:1.35;text-align:center;overflow-wrap:anywhere;border:1px solid var(--line)}
 .fact::before{content:"\201C"}.fact::after{content:"\201D"}
 .fact.photo::before,.fact.photo::after{content:none}
+.photo-box img:not([src]){visibility:hidden}
 .photo-box{background:#fff;border:6px solid #fff;border-bottom-width:28px;border-radius:6px;box-shadow:0 6px 20px rgba(80,40,20,.18);align-self:center;transform:rotate(-2deg);max-width:100%}
 .photo-box img{display:block;max-width:100%;height:34vh;width:auto;min-width:24vh;object-fit:contain;background:#F3E3DA}
 .tv .photo-box img{height:40vh;min-width:30vh}
@@ -140,6 +141,11 @@ body.tv{overflow-x:hidden}
 .tv .opts.reveal.settled .opt:not(.right){opacity:0}
 .tv .lb.anim{animation:slideIn .7s cubic-bezier(.2,.8,.2,1) .7s both}
 .tv .board.anim li{animation:slideIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.tv .wrap.enter{animation:fadeIn .4s ease both}
+.tv .opts.reveal.anim{animation:fadeIn .3s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.tv .rev .reveal-who{animation:fadeUp .5s ease .15s both}
 .board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .board li{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:700;font-size:clamp(1rem,2.4vmin,1.7rem)}
 .board .rk{width:1.8em;color:var(--coral);font-variant-numeric:tabular-nums}
@@ -525,11 +531,25 @@ const rankOf = (board, pid) => { const i = board.findIndex(r => r.id === pid); r
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 
 /* ---------- shared bits ---------- */
+/* On the TV a photo's <img> is kept and moved from screen to screen, so going from the question to
+   the answer never shows an empty frame while it reloads. */
+const photoEls = new Map();
+function preloadPhoto(id) {
+  if (!HOST || !id || photoEls.has(id)) return;
+  const img = h('img'); img.alt = 'Mystery photo'; photoEls.set(id, img);
+  // decode it now, off screen, so it's ready to paint the moment the next question shows
+  db.getPhoto(id).then(d => { if (!d) return photoEls.delete(id); img.src = d; return img.decode ? img.decode() : null; }).then(() => { img.dataset.ready = '1'; }).catch(() => {});
+}
 async function fillPhoto(box, id) {
+  const frame = h('div', 'photo-box'); frame.dataset.photo = id;
+  const kept = HOST && photoEls.get(id);
+  if (kept && kept.src) { kept.removeAttribute('style'); frame.appendChild(kept); box.appendChild(frame); return; }
+  if (kept) photoEls.delete(id);  // still on its way: load a fresh one below
   const img = h('img'); img.alt = 'Mystery photo';
-  const frame = h('div', 'photo-box'); frame.appendChild(img); box.appendChild(frame);
+  frame.appendChild(img); box.appendChild(frame);
+  if (HOST) photoEls.set(id, img);
   const data = await db.getPhoto(id);
-  if (data) img.src = data; else { frame.replaceWith(h('p', 'fact photo', 'The photo could not be loaded.')); }
+  if (data) img.src = data; else { if (HOST) photoEls.delete(id); frame.replaceWith(h('p', 'fact photo', 'The photo could not be loaded.')); }
 }
 function factView(entry) {
   const box = h('div');
@@ -824,12 +844,51 @@ const Confetti = (() => {
 /* ---------- screens: rebuild on key change, update in place otherwise ---------- */
 const app = $('#app');
 let screenKey = '', screen = null;
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
 function show(key, build) {
   if (key === screenKey && screen) { if (screen.update) screen.update(); fitSoon(); return; }
-  screenKey = key; const wrap = h('div', 'wrap'); app.textContent = ''; app.appendChild(wrap);
+  const old = app.firstElementChild, smooth = HOST && old && !calm.matches;
+  // remember where the photo was, so the same photo can glide to its new place
+  const oldBox = smooth && old.querySelector('.photo-box[data-photo]');
+  const was = oldBox && { id: oldBox.dataset.photo, r: oldBox.getBoundingClientRect() };
+  // the photo itself moves to the new screen: keep its old frame the same size so nothing shifts while fading
+  if (was) { oldBox.style.width = oldBox.offsetWidth + 'px'; oldBox.style.height = oldBox.offsetHeight + 'px'; oldBox.style.boxSizing = 'border-box'; }
+  screenKey = key; const wrap = h('div', 'wrap');
+  if (smooth) { const at = [old.offsetTop, old.offsetLeft, old.offsetWidth]; app.insertBefore(wrap, old); ghost(old, at); } else { app.textContent = ''; app.appendChild(wrap); }
   scrollTo(0, 0);  // a new screen starts at the top, even if the last one was scrolled down
   screen = build(wrap) || {}; if (screen.update) screen.update();
-  fitSoon();
+  if (!HOST) return fitSoon();
+  fitTV();  // fit now, before the first paint, so nothing jumps
+  let glided = false;
+  if (was && was.r.height) {
+    const box = wrap.querySelector('.photo-box[data-photo="' + CSS.escape(was.id) + '"]');
+    if (box) {
+      const g = old.querySelector('.photo-box[data-photo="' + CSS.escape(was.id) + '"]'); if (g) g.style.visibility = 'hidden';
+      const nr = box.getBoundingClientRect();
+      if (nr.height) {
+        box.style.transformOrigin = '0 0'; box.style.transition = 'none';
+        box.style.transform = 'translate(' + (was.r.left - nr.left) + 'px,' + (was.r.top - nr.top) + 'px) scale(' + (was.r.height / nr.height) + ')';
+        box.getBoundingClientRect();
+        box.style.transition = 'transform .65s cubic-bezier(.25,.8,.25,1)'; box.style.transform = '';
+        setTimeout(() => { box.style.transition = ''; box.style.transformOrigin = ''; }, 700);
+        glided = true;
+      }
+    }
+  }
+  // a true crossfade: the new screen fades in as the old one fades out (unless the photo is gliding,
+  // where the answer screen brings its own parts in one by one)
+  if (smooth && !glided) wrap.classList.add('enter');
+}
+// the old TV screen fades out on top of the new one instead of vanishing in a single frame
+// (it stays inside #app, after the new screen, so it keeps exactly the same styles and position)
+function ghost(old, [top, left, width]) {
+  old.classList.remove('enter'); old.style.animation = 'none';  // its own fade-in would hold it solid
+  old.classList.add('leaving');
+  Object.assign(old.style, { position: 'absolute', left: left + 'px', top: top + 'px', width: width + 'px', margin: '0', pointerEvents: 'none', zIndex: '6' });
+  old.querySelectorAll('button').forEach(b => { b.disabled = true; b.tabIndex = -1; });
+  old.getBoundingClientRect();
+  old.style.transition = 'opacity .4s ease'; old.style.opacity = '0';
+  setTimeout(() => old.remove(), 450);
 }
 
 /* The TV question and answer screens must fit on one screen, whatever the screen is: nobody can
@@ -844,22 +903,25 @@ function fitTV() {
   // the TV fits its question and answer screens; a phone fits its question screen so the
   // answer buttons are there without scrolling
   if (!(screenKey.startsWith('q-') || (HOST && (screenKey.startsWith('r-') || screenKey.startsWith('in-'))))) return;
+  // measure the layout, not what's on screen: the photo glide and the answer pop use transforms
+  const layoutBottom = el => { let y = 0, e = el; while (e) { y += e.offsetTop; e = e.offsetParent; } return y + el.offsetHeight - scrollY; };
   const over = () => {
     let bottom = 0;
     for (const c of w.querySelectorAll('.qhead, .timer, .photo-box, .manger, .fact, .verse, .lead, .ask, .opts, .hostbar, .board, .reveal-who, .intro .btn'))
-      bottom = Math.max(bottom, c.getBoundingClientRect().bottom);
+      if (c.offsetParent) bottom = Math.max(bottom, layoutBottom(c));
     return bottom + 10 - innerHeight;
   };
   const img = w.querySelector('.photo-box img') || w.querySelector('.manger svg'), fact = w.querySelector('.fact') || w.querySelector('.verse'), who = w.querySelector('.reveal-who .script'), opts = [...w.querySelectorAll('.opt')], ask = w.querySelector('.ask');
   for (let i = 0, o = over(); o > 0 && i < 40; i++, o = over()) {
-    if (img && img.getBoundingClientRect().height > innerHeight * 0.18) {
-      img.style.minWidth = '0'; img.style.height = Math.max(innerHeight * 0.18, img.getBoundingClientRect().height - o - 2) + 'px';
+    const ih = img && (img.offsetHeight || img.getBoundingClientRect().height);
+    if (img && ih > innerHeight * 0.18) {
+      img.style.minWidth = '0'; img.style.height = Math.max(innerHeight * 0.18, ih - o - 2) + 'px';
     } else if (who && parseFloat(getComputedStyle(who).fontSize) > 34) {
       who.style.fontSize = parseFloat(getComputedStyle(who).fontSize) * 0.85 + 'px';
     } else if (fact && parseFloat(getComputedStyle(fact).fontSize) > 15) {
       fact.style.fontSize = parseFloat(getComputedStyle(fact).fontSize) * 0.9 + 'px';
     } else if (opts.length && parseFloat(getComputedStyle(opts[0]).fontSize) > 15) {
-      const f = parseFloat(getComputedStyle(opts[0]).fontSize) * 0.9, mh = Math.max(44, opts[0].getBoundingClientRect().height * 0.9);
+      const f = parseFloat(getComputedStyle(opts[0]).fontSize) * 0.9, mh = Math.max(44, opts[0].offsetHeight * 0.9);
       opts.forEach(b => { b.style.fontSize = f + 'px'; b.style.minHeight = mh + 'px'; });
       if (ask) ask.style.fontSize = Math.max(18, parseFloat(getComputedStyle(ask).fontSize) * 0.9) + 'px';
     } else break;
@@ -1332,7 +1394,7 @@ function hostQuestion(w, q) {
     try { await db.set(STATE, { ...s, phase: 'reveal', at: Date.now() }); } catch (e) { revealing = false; }
   }
   const tick = setInterval(() => {
-    if (!document.contains(bar)) return clearInterval(tick);
+    if (!document.contains(bar) || bar.closest('.leaving')) return clearInterval(tick);
     const el = Date.now() - t0; bar.firstChild.style.transform = 'scaleX(' + Math.max(0, 1 - el / lim) + ')';
     const sec = Math.ceil((lim - el) / 1000); if (sec !== lastSec && sec > 0 && sec <= 5 && !revealing) Sound.tick(sec <= 3); lastSec = sec;
     if (el >= lim) reveal();
@@ -1389,6 +1451,7 @@ function hostReveal(w, q) {
     firstDraw = false;
   }
   const last = st.qi >= st.qs.length - 1;
+  if (!last) { const nq = st.qs[st.qi + 1], ne = nq && g.entries.find(e => e.id === nq.e); if (ne && ne.photo) preloadPhoto(ne.photo); }
   const hb = h('div', 'hostbar'); const end = h('button', 'btn ghost small', 'End game'); end.type = 'button';
   const next = h('button', 'btn', last ? 'See the winners' : 'Next question'); next.type = 'button';
   hb.append(end, next); w.appendChild(hb);
