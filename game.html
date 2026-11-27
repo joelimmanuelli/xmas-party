@@ -127,6 +127,19 @@ textarea{resize:vertical;min-height:90px}
 .tv .qhead{font-size:clamp(1rem,2.6vmin,1.8rem);font-weight:700}
 .reveal-who{text-align:center}
 .reveal-who .script{font-size:clamp(2.6rem,8vmin,6.5rem)}
+/* reveal on the TV: the right answer pops, the others fade away, the leaderboard slides in */
+@keyframes revPop{0%{transform:none}40%{transform:scale(1.14)}100%{transform:translate(var(--dx,0),var(--dy,0)) scale(1.12)}}
+@keyframes revFade{to{opacity:0;transform:scale(.86)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(115%)}to{opacity:1;transform:none}}
+body.tv{overflow-x:hidden}
+.tv .opts.reveal .opt{transform-origin:50% 50%}
+.tv .opts.reveal .opt.right{position:relative;z-index:1}
+.tv .opts.reveal.anim .opt.right{animation:revPop 1s cubic-bezier(.3,.9,.3,1.1) .25s both}
+.tv .opts.reveal.anim .opt:not(.right){animation:revFade .55s ease .15s forwards}
+.tv .opts.reveal.settled .opt.right{transform:translate(var(--dx,0),var(--dy,0)) scale(1.12)}
+.tv .opts.reveal.settled .opt:not(.right){opacity:0}
+.tv .lb.anim{animation:slideIn .7s cubic-bezier(.2,.8,.2,1) .7s both}
+.tv .board.anim li{animation:slideIn .5s cubic-bezier(.2,.8,.2,1) both}
 .board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .board li{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:700;font-size:clamp(1rem,2.4vmin,1.7rem)}
 .board .rk{width:1.8em;color:var(--coral);font-variant-numeric:tabular-nums}
@@ -246,7 +259,7 @@ input[type="range"]{width:100%;accent-color:var(--coral)}
 @media (max-width:820px){.tv-grid{grid-template-columns:1fr}.steps3{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){.elf,.elf .flip,.elf-svg,.elf-svg *,.bulb,.rays,.star,.smoke{animation:none!important}}
 @media (max-width:380px){.opt{font-size:1rem;padding:12px 8px 12px 32px;min-height:64px}.opt::before{left:10px}}
-@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}.tv .opts.reveal.anim .opt,.tv .lb.anim,.tv .board.anim li{animation:none!important}.tv .opts.reveal.anim .opt:not(.right){opacity:0}}
 </style>
 </head>
 <body>
@@ -1346,8 +1359,9 @@ function hostReveal(w, q) {
   leftC.appendChild(who);
   const optBox = h('div'); leftC.appendChild(optBox);
   grid.appendChild(leftC);
-  const right = h('div', 'card'); right.appendChild(h('p', 'lbl', 'Leaderboard'));
-  const ol = h('ol', 'board');
+  const right = h('div', 'card lb anim'); right.appendChild(h('p', 'lbl', 'Leaderboard'));
+  const ol = h('ol', 'board anim');
+  let firstDraw = true;
   right.appendChild(ol); grid.appendChild(right);
   let sig = '';
   function update() {
@@ -1355,14 +1369,24 @@ function hostReveal(w, q) {
     const s2 = JSON.stringify([here.map(a => a.pid + a.choice + a.ms), g.players.map(p => p.id + p.name)]);
     if (s2 === sig) return; sig = s2;
     const counts = {}; here.forEach(a => { counts[a.choice] = (counts[a.choice] || 0) + 1; });
-    optBox.textContent = ''; optBox.appendChild(optionGrid(g, q, { reveal: true, counts }));
+    optBox.textContent = ''; const og = optionGrid(g, q, { reveal: true, counts }); optBox.appendChild(og);
+    // how far the right answer travels to sit in the middle, as a share of its own size (survives resizing)
+    const rt = og.querySelector('.opt.right'), gr = og.getBoundingClientRect(), rr = rt && rt.getBoundingClientRect();
+    if (rt && rr.width && rr.height) {
+      rt.style.setProperty('--dx', ((gr.left + gr.width / 2) - (rr.left + rr.width / 2)) / rr.width * 100 + '%');
+      rt.style.setProperty('--dy', ((gr.top + gr.height / 2) - (rr.top + rr.height / 2)) / rr.height * 100 + '%');
+    }
+    og.classList.add(firstDraw ? 'anim' : 'settled');  // after measuring, so the move isn't counted twice
     const board = scores(g, st.qi), gains = new Map(here.map(a => [a.pid, points(st, a, q)]));
     ol.textContent = '';
+    if (!firstDraw) ol.classList.remove('anim');
     board.slice(0, 6).forEach((r, i) => {
-      const li = h('li'); li.appendChild(h('span', 'rk', String(i + 1))); li.appendChild(h('span', 'nm', r.name));
+      const li = h('li'); if (firstDraw) li.style.animationDelay = (0.95 + i * 0.09) + 's';
+      li.appendChild(h('span', 'rk', String(i + 1))); li.appendChild(h('span', 'nm', r.name));
       if (gains.get(r.id)) li.appendChild(h('span', 'gain', '+' + gains.get(r.id)));
       li.appendChild(h('span', 'score', r.score.toLocaleString())); ol.appendChild(li);
     });
+    firstDraw = false;
   }
   const last = st.qi >= st.qs.length - 1;
   const hb = h('div', 'hostbar'); const end = h('button', 'btn ghost small', 'End game'); end.type = 'button';
