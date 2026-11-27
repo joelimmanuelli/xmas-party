@@ -559,7 +559,8 @@ async function goPhase(btn, from, next) {
   try { await db.set(STATE, { ...s, ...next, at: Date.now() }); } catch (e) { if (btn) btn.disabled = false; }
 }
 
-const askText = e => e && e.kind === 'photo' ? (txt(e.ask) || 'Whose baby photo is this?') : 'Who wrote this?';
+// every photo gets the same question: it's always a baby or kid photo of someone in the room
+const askText = e => e && e.kind === 'photo' ? 'Who’s this little one?' : 'Who wrote this?';
 const revealLabel = e => e && e.kind === 'photo' ? 'It’s' : 'Written by';
 
 /* ---------- sound: synthesised in the browser, carols are public domain ---------- */
@@ -986,12 +987,10 @@ function lobbyScreen(w) {
   const frame = h('div', 'crop-frame'); const cimg = h('img'); cimg.alt = 'Photo to crop'; frame.appendChild(cimg);
   const zoom = h('input'); zoom.type = 'range'; zoom.min = '1'; zoom.max = '4'; zoom.step = '0.01'; zoom.value = '1'; zoom.id = 'zoom'; zoom.setAttribute('aria-label', 'Zoom');
   const cropHint = h('p', 'muted', 'Drag to move. Pinch or slide to zoom.');
-  const askLbl = h('label', 'lbl', 'Question to show with it (optional)'); askLbl.htmlFor = 'ask';
-  const askIn = h('input'); askIn.type = 'text'; askIn.id = 'ask'; askIn.maxLength = 80; askIn.placeholder = 'Whose baby photo is this?';
   const cropErr = h('p', 'err'); cropErr.hidden = true;
   const cropRow = h('div', 'row'); const cancel = h('button', 'btn ghost', 'Cancel'); cancel.type = 'button'; const addP = h('button', 'btn', 'Add photo'); addP.type = 'button';
   cropRow.append(cancel, addP);
-  crop.append(aspSeg, frame, zoom, cropHint, askLbl, askIn, cropErr, cropRow);
+  crop.append(aspSeg, frame, zoom, cropHint, cropErr, cropRow);
   form.insertBefore(crop, err);
   const C = { nw: 0, nh: 0, aw: 1, ah: 1, z: 1, tx: 0, ty: 0, W: 0, H: 0, s0: 1, url: '' };
   const cropping = v => { crop.hidden = !v; pickBtn.hidden = photoHint.hidden = v; if (!v) setMode(mode); seg.hidden = true; };
@@ -1033,7 +1032,7 @@ function lobbyScreen(w) {
     C.url = URL.createObjectURL(f);
     try {
       await new Promise((res, rej) => { cimg.onload = res; cimg.onerror = rej; cimg.src = C.url; });
-      C.nw = cimg.naturalWidth; C.nh = cimg.naturalHeight; C.z = 1; zoom.value = '1'; askIn.value = ''; cropErr.hidden = true; err.hidden = true;
+      C.nw = cimg.naturalWidth; C.nh = cimg.naturalHeight; C.z = 1; zoom.value = '1'; cropErr.hidden = true; err.hidden = true;
       cropping(true);
       const r = C.nw / C.nh; setAspect(...(r > 1.15 ? [4, 3] : r < 0.87 ? [4, 5] : [1, 1]));
     } catch (e) { cropping(false); fail("That file couldn't be opened as a photo. Try a different one."); }
@@ -1051,7 +1050,7 @@ function lobbyScreen(w) {
       while (data.length > 200000 && q > 0.4) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
       const photoId = rid();
       await db.putPhoto(photoId, g.gid, data);
-      await db.set(db.gp('entry') + rid(), { gid: g.gid, pid: PID, kind: 'photo', photo: photoId, ask: txt(askIn.value), t: Date.now() });
+      await db.set(db.gp('entry') + rid(), { gid: g.gid, pid: PID, kind: 'photo', photo: photoId, t: Date.now() });
       cropping(false); if (C.url) { URL.revokeObjectURL(C.url); C.url = ''; }
     } catch (e) { cropErr.hidden = false; cropErr.textContent = "That photo couldn't be added. Check your connection and try again."; }
     busy = false; addP.disabled = false; addP.textContent = 'Add photo'; update(true);
@@ -1077,7 +1076,7 @@ function lobbyScreen(w) {
     if (!mine.length) listCard.appendChild(h('p', 'muted', 'Not added yet.'));
     mine.forEach((e, i) => {
       const row = h('div', 'entry'); row.appendChild(h('span', 'slot-n', String(i + 1)));
-      if (e.kind === 'photo') { const im = h('img'); im.alt = 'Your photo'; db.getPhoto(e.photo).then(d => { if (d) im.src = d; }); row.appendChild(im); const tx = h('span', 'txt', 'Photo'); tx.appendChild(h('span', 'sub', askText(e))); row.appendChild(tx); }
+      if (e.kind === 'photo') { const im = h('img'); im.alt = 'Your photo'; db.getPhoto(e.photo).then(d => { if (d) im.src = d; }); row.appendChild(im); const tx = h('span', 'txt', 'Your baby photo'); tx.appendChild(h('span', 'sub', 'Only shows during the game')); row.appendChild(tx); }
       else row.appendChild(h('span', 'txt', txt(e.text)));
       const del = h('button', 'btn quiet', 'Remove'); del.type = 'button';
       del.addEventListener('click', async () => { del.disabled = true; try { if (e.kind === 'photo' && e.photo) db.delPhoto(e.photo).catch(() => {}); await db.del(db.gp('entry') + e.id); } catch (x) { del.disabled = false; } });
